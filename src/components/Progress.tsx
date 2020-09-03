@@ -20,7 +20,7 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
 
   useEffect(() => {
     if (user && bid) {
-      const unsubscribe = collection(user.uid)
+      collection(user.uid)
         .doc(bid)
         .onSnapshot(doc => {
           if (doc !== undefined) {

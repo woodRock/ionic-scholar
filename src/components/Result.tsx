@@ -8,7 +8,7 @@ import {
   IonItemOptions,
   IonItemOption
 } from "@ionic/react";
-import React, { useState } from "react";
+import React from "react";
 import { libraryOutline, addOutline, documentOutline } from "ionicons/icons";
 import { Book, useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
