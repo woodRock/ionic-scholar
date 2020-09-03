@@ -1,5 +1,5 @@
 # Scholar
-![Deno](https://github.com/woodRock/ionic-scholar/workflows/Deno/badge.svg)
+![Node.js CI](https://github.com/woodRock/ionic-scholar/workflows/Node.js%20CI/badge.svg)
 
 ## Overview
 
