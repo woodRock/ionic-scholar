@@ -1,4 +1,5 @@
 # Scholar
+![Node.js CI](https://github.com/woodRock/ionic-scholar/workflows/Node.js%20CI/badge.svg)
 
 ## Overview
 
