@@ -2,7 +2,7 @@ import { IonLabel, IonText, IonItem, IonButton, IonInput } from "@ionic/react";
 import React, { useState, useEffect } from "react";
 import { toList } from "../api/scholar";
 import { collection } from "../api/firebase";
-import { Book, serialize, urlFriendly } from "../api/library";
+import { serialize, urlFriendly } from "../api/library";
 import { useUser } from "../api/user";
 
 type Props = {
@@ -18,7 +18,7 @@ const Keywords: React.FC = ({ children, book, bid }: Props) => {
 
   useEffect(() => {
     if (user && bid) {
-      const unsubscribe = collection(user.uid)
+      collection(user.uid)
         .doc(bid)
         .get()
         .then(doc => {

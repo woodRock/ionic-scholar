@@ -57,7 +57,7 @@ const appPages: AppPage[] = [
 const Menu: React.FC = () => {
   const location = useLocation();
   const user = useUser();
-  const { photoURL, displayName, email } = user;
+  const { displayName } = user;
 
   useEffect(() => {}, []);
 

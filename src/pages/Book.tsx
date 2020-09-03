@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { collection } from "../api/firebase";
 import { useUser } from "../api/user";
-import { Book, useLibrary } from "../api/library";
+import { Book } from "../api/library";
 import { toList } from "../api/scholar";
 import Page from "../components/Page";
 import Citations from "../components/Citations";
@@ -12,11 +12,10 @@ import Quotes from "../components/Quotes";
 import Progress from "../components/Progress";
 
 const BookPage: React.FC = () => {
-  const [, find] = useLibrary();
   const [book, setBook] = useState<Book>();
   const user = useUser();
   const { id } = useParams();
-  const [bid, setbid] = useState("");
+  const [bid] = useState("");
   const props = { name: "Book", bid: bid };
   const [bookProps, setBookProps] = useState<any>({ book: book, bid: "" });
 

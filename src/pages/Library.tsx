@@ -13,7 +13,7 @@ import React from "react";
 import { libraryOutline, trashOutline } from "ionicons/icons";
 import { v4 } from "uuid";
 import Page from "../components/Page";
-import { useLibrary, Book } from "../api/library";
+import { useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
 
 const LibraryPage = () => {
@@ -40,7 +40,7 @@ const Library = () => {
 
 const BookItem = (book: any) => {
   const [, , , remove] = useLibrary();
-  const { title, year, authors, url } = book;
+  const { title, authors } = book;
   return (
     <IonItemSliding>
       <IonItem key={title} routerLink={"Book/" + title}>

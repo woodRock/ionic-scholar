@@ -41,7 +41,7 @@ const validUsername = (username: string): Boolean => {
 };
 
 const validPassword = (p1: string) => {
-  const condition = p1 != "";
+  const condition = p1 !== "";
   error = !condition ? "Invalid password" : error;
   return condition;
 };

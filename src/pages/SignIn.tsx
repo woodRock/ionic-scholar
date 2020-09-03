@@ -102,7 +102,7 @@ const SignIn: React.FC = props => {
       </IonButton>
       <IonItem routerLink="/page/SignUp">
         {" "}
-        <IonLabel>Don't have an account?</IonLabel> <a> Sign Up</a>
+        <IonLabel>Don't have an account?</IonLabel> <a href="#"> Sign Up</a>
       </IonItem>
     </IonList>
   );

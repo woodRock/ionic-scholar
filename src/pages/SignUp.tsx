@@ -103,7 +103,7 @@ const SignUp: React.FC = () => {
         Sign Up
       </IonButton>
       <IonItem routerLink="/page/SignIn">
-        Already have an account? <a>Sign In</a>
+        Already have an account? <a href="#">Sign In</a>
       </IonItem>
     </IonList>
   );

@@ -37,7 +37,6 @@ export const useLibrary = () => useContext(LibraryContext);
 
 const LibraryProvider: React.FC = ({ children }) => {
   const [library, setLibrary] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const user = useUser();
 
   useEffect(() => {

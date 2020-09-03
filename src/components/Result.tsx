@@ -6,19 +6,17 @@ import {
   IonLabel,
   IonText,
   IonItemOptions,
-  IonItemOption,
-  IonPopover
+  IonItemOption
 } from "@ionic/react";
 import React, { useState } from "react";
 import { libraryOutline, addOutline, documentOutline } from "ionicons/icons";
 import { Book, useLibrary } from "../api/library";
-import { toList, cite } from "../api/scholar";
+import { toList } from "../api/scholar";
 import Citations from "./Citations";
 
 const Result = (book: Book) => {
   const { title, year, authors, url } = book;
   const [, , add, ,] = useLibrary();
-  const [showCitations, setShowCitations] = useState(false);
 
   const props = { book: book, text: `''` };
 
