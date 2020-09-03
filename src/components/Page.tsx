@@ -5,15 +5,18 @@ import {
   IonMenuButton,
   IonPage,
   IonTitle,
-  IonToolbar
+  IonToolbar,
 } from "@ionic/react";
 import React from "react";
 
-type Props = {
-  children?: React.ReactNode;
-  name?: string;
-};
-
+/**
+ * A wrapper for child components.
+ * Renders generic content required for each page.
+ *
+ * @param children to be rendered inside the Page
+ * @param name of the page for the title
+ * @constructor
+ */
 const Page: React.FC = ({ children, name }: Props) => {
   return (
     <IonPage>
@@ -25,7 +28,6 @@ const Page: React.FC = ({ children, name }: Props) => {
           <IonTitle>{name}</IonTitle>
         </IonToolbar>
       </IonHeader>
-
       <IonContent>
         <IonHeader collapse="condense">
           <IonToolbar>
@@ -36,6 +38,11 @@ const Page: React.FC = ({ children, name }: Props) => {
       </IonContent>
     </IonPage>
   );
+};
+
+type Props = {
+  children?: React.ReactNode;
+  name?: string;
 };
 
 export default Page;

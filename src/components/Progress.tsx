@@ -1,15 +1,21 @@
-import { IonLabel, IonText, IonItem, IonButton, IonInput } from "@ionic/react";
-import React, { useState, useEffect } from "react";
+import { IonButton, IonInput, IonItem, IonLabel, IonText } from "@ionic/react";
+import React, { useEffect, useState } from "react";
 import { serialize, urlFriendly } from "../api/library";
 import { useUser } from "../api/user";
 import { collection } from "../api/firebase";
 
-type Props = {
-  children?: React.ReactNode;
-  book?: any;
-  bid?: string;
-};
-
+/**
+ * Lets users track their progress through each paper.
+ * This is calculated as a percentage of pages read of the total.
+ * A user manually enters the total number of pages.
+ * Then they can update their current page as they see fit.
+ * This information is stored on Firebase.
+ *
+ * @param children
+ * @param book to track progress for
+ * @param bid unique identifier for Firebase firestore
+ * @constructor
+ */
 const Progress: React.FC = ({ children, book, bid }: Props) => {
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState(false);
@@ -22,7 +28,7 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
     if (user && bid) {
       collection(user.uid)
         .doc(bid)
-        .onSnapshot(doc => {
+        .onSnapshot((doc) => {
           if (doc !== undefined) {
             const docX = doc as any;
             const progress = docX.data().progress;
@@ -42,20 +48,20 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
     }
     const progress = serialize({
       current: Number(input),
-      total: Number(totalInput)
+      total: Number(totalInput),
     });
     book = {
       ...book,
-      progress: progress
+      progress: progress,
     };
     const data = {
       book: serialize(book),
-      uid: `${urlFriendly(book.title + book.year)}`
+      uid: `${urlFriendly(book.title + book.year)}`,
     };
     collection(user.uid)
       .doc(data.uid)
       .set(book)
-      .catch(function(error) {
+      .catch(function (error) {
         console.error("Error writing document: ", error);
       });
   };
@@ -94,8 +100,8 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
             type="text"
             value={totalInput}
             placeholder="total pages: e.g. 500"
-            onIonChange={e => setTotalInput(e.detail.value!)}
-          ></IonInput>
+            onIonChange={(e) => setTotalInput(e.detail.value!)}
+          />
           <IonItem>
             <IonButton onClick={setTheTotal}>Set</IonButton>
           </IonItem>
@@ -106,7 +112,7 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
     return (
       <IonItem>
         <IonLabel>Progress</IonLabel>
-        <IonButton onClick={e => setTotalEdit(true)}>Enable</IonButton>
+        <IonButton onClick={() => setTotalEdit(true)}>Enable</IonButton>
       </IonItem>
     );
   }
@@ -117,9 +123,9 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
         <IonInput
           type="text"
           value={input}
-          onIonChange={e => setInput(e.detail.value!)}
+          onIonChange={(e) => setInput(e.detail.value!)}
           placeholder={`current page: e.g. 100`}
-        ></IonInput>
+        />
         <IonText>{` of ${totalInput} pages`}</IonText>
         <IonButton slot="end" onClick={updateCurrent}>
           Set
@@ -134,11 +140,17 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
         <progress value={Number(input)} max={Number(totalInput)} />
       </IonLabel>
       <IonText>{progress(Number(input), Number(totalInput))}</IonText>
-      <IonButton slot="end" onClick={e => setEdit(!edit)}>
+      <IonButton slot="end" onClick={() => setEdit(!edit)}>
         Edit
       </IonButton>
     </IonItem>
   );
+};
+
+type Props = {
+  children?: React.ReactNode;
+  book?: any;
+  bid?: string;
 };
 
 export default Progress;

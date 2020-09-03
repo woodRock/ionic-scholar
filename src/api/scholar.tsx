@@ -3,7 +3,7 @@ import { search } from "scholarly";
 
 /**
  * This class handles the Scholar API
- * We islote the business logic here
+ * We isolate the business logic here
  */
 
 /**

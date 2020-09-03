@@ -1,8 +1,14 @@
 import React from "react";
-type Props = {
-  children?: React.ReactNode;
-};
-const CenterChild: React.FC = ({ children }: Props) => {
+
+/**
+ * This is a wrapper a child component.
+ * It puts that child in the center of the screen.
+ * Both vertically and horizontally.
+ *
+ * @param children a child component to be centered
+ * @constructor
+ */
+const CenterChild = ({ children }: Props) => {
   return (
     <div
       style={{
@@ -10,12 +16,16 @@ const CenterChild: React.FC = ({ children }: Props) => {
         width: "100%",
         display: "flex",
         justifyContent: "center",
-        alignItems: "center"
+        alignItems: "center",
       }}
     >
       {children}
     </div>
   );
+};
+
+type Props = {
+  children?: React.ReactNode;
 };
 
 export default CenterChild;

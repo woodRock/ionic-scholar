@@ -1,12 +1,12 @@
 import {
-  IonLabel,
-  IonText,
-  IonList,
-  IonItem,
-  IonIcon,
   IonButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
   IonPopover,
-  IonTitle
+  IonText,
+  IonTitle,
 } from "@ionic/react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { checkmarkDoneCircleOutline } from "ionicons/icons";
@@ -14,12 +14,14 @@ import React, { useState } from "react";
 import { Book } from "../api/library";
 import { cite } from "../api/scholar";
 
-type Props = {
-  children?: React.ReactNode;
-  book?: Book;
-  text?: string;
-};
-
+/**
+ * We generate a LaTeX citation for a paper here
+ *
+ * @param children
+ * @param book to generate a citation for
+ * @param text name of the button (this component is reused)
+ * @constructor
+ */
 const Citations: React.FC = ({ children, book, text }: Props) => {
   const [showCitations, setShowCitations] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -53,14 +55,14 @@ const Citations: React.FC = ({ children, book, text }: Props) => {
                   style={{ color: "green" }}
                   slot="end"
                   icon={checkmarkDoneCircleOutline}
-                ></IonIcon>
+                />
               </IonItem>
               <IonItem>
                 <IonText style={{ color: "grey" }}>
                   Tap anywhere outside to dismiss...
                 </IonText>
               </IonItem>
-              <IonButton expand="full" onClick={e => setShowCitations(false)}>
+              <IonButton expand="full" onClick={() => setShowCitations(false)}>
                 Back
               </IonButton>
             </IonList>
@@ -69,7 +71,7 @@ const Citations: React.FC = ({ children, book, text }: Props) => {
           <>
             <h1>Latex</h1>
             <pre> {citation}</pre>
-            <CopyToClipboard text={citation} onCopy={e => setCopied(true)}>
+            <CopyToClipboard text={citation} onCopy={() => setCopied(true)}>
               <IonButton expand="full">Copy</IonButton>
             </CopyToClipboard>
           </>
@@ -77,6 +79,12 @@ const Citations: React.FC = ({ children, book, text }: Props) => {
       </IonPopover>
     </>
   );
+};
+
+type Props = {
+  children?: React.ReactNode;
+  book?: Book;
+  text?: string;
 };
 
 export default Citations;

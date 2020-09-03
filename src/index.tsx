@@ -4,10 +4,15 @@ import App from "./App";
 import * as serviceWorker from "./serviceWorker";
 import LibraryProvider from "./api/library";
 import UserProvider from "./api/user";
-import { initialize } from "./api/firebase";
+import {initialize} from "./api/firebase";
 
+// Setup the firebase connection once.
 initialize();
 
+/**
+ * The application requires two contexts to be provided at the DOM root.
+ * The library and user contexts. These contexts are required by the subcomponents.
+ */
 ReactDOM.render(
   <UserProvider>
     <LibraryProvider>

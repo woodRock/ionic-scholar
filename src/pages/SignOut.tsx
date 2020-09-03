@@ -1,10 +1,14 @@
-import { IonButton, IonList, IonItem } from "@ionic/react";
+import { IonButton, IonItem, IonList } from "@ionic/react";
 import React from "react";
 import { auth } from "../api/firebase";
 import { useHistory } from "react-router-dom";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
+/**
+ * This page is the confirmation displayed when a user signs out.
+ * @constructor
+ */
 const SignOutPage: React.FC = () => {
   const props = { name: "Sign Out" };
   return (
@@ -16,6 +20,11 @@ const SignOutPage: React.FC = () => {
   );
 };
 
+/**
+ * When a user signs out they are taken back to the Sign In back.
+ * Should they cancel at the confirmation, they are returned to the Explore.
+ * @constructor
+ */
 const SignOut: React.FC = () => {
   const history = useHistory();
 

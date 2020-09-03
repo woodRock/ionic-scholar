@@ -1,16 +1,21 @@
-import { IonLabel, IonText, IonList, IonItem, IonButton } from "@ionic/react";
-import { useParams } from "react-router-dom";
-import React, { useEffect, useState } from "react";
-import { collection } from "../api/firebase";
-import { useUser } from "../api/user";
-import { Book } from "../api/library";
-import { toList } from "../api/scholar";
+import {IonButton, IonItem, IonLabel, IonList, IonText} from "@ionic/react";
+import {useParams} from "react-router-dom";
+import React, {useEffect, useState} from "react";
+import {collection} from "../api/firebase";
+import {useUser} from "../api/user";
+import {Book} from "../api/library";
+import {toList} from "../api/scholar";
 import Page from "../components/Page";
 import Citations from "../components/Citations";
 import Keywords from "../components/Keywords";
 import Quotes from "../components/Quotes";
 import Progress from "../components/Progress";
 
+/**
+ * The component for representing an individual book.
+ * It retrieves the book's id on firebase from the browser.
+ * @constructor React Functional Component
+ */
 const BookPage: React.FC = () => {
   const [book, setBook] = useState<Book>();
   const user = useUser();
@@ -39,12 +44,14 @@ const BookPage: React.FC = () => {
   );
 };
 
-type Props = {
-  children?: React.ReactNode;
-  book?: Book;
-  bid?: string;
-};
-
+/**
+ * This component displays the meta-data for the book.
+ * It calls the subcomponents necessary to track progress.
+ * @param children
+ * @param book - The book to be summarized
+ * @param bid - Firebase ID for the book document
+ * @constructor - React Functional Component
+ */
 const BookItem: React.FC = ({ children, book, bid }: Props) => {
   const { title, authors, year, url } = book
     ? book
@@ -75,6 +82,12 @@ const BookItem: React.FC = ({ children, book, bid }: Props) => {
       </IonButton>
     </IonList>
   );
+};
+
+type Props = {
+    children?: React.ReactNode;
+    book?: Book;
+    bid?: string;
 };
 
 export default BookPage;

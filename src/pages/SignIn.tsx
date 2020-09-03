@@ -1,10 +1,10 @@
 import {
-  IonList,
-  IonItem,
-  IonInput,
-  IonLabel,
   IonButton,
-  IonIcon
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonLabel,
+  IonList,
 } from "@ionic/react";
 import { logoGoogle } from "ionicons/icons";
 import React, { useState } from "react";
@@ -14,6 +14,10 @@ import { auth, signInWithGoogle } from "../api/firebase";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
+/**
+ * User authentication with email/password or Google account is provided.
+ * @constructor
+ */
 const SignInPage = () => {
   const props = { name: "Sign In" };
   return (
@@ -25,28 +29,34 @@ const SignInPage = () => {
   );
 };
 
-const SignIn: React.FC = props => {
-  // TODO deprecated remove this
+/**
+ * This Sign In page allows the user to authenticate their account.
+ * It provides context sensitive error messages.
+ * Upon success a user is redirected to the Explore page.
+ * We provide navigation to Sign Up and Forgot Password from here.
+ * @constructor
+ */
+const SignIn = () => {
   const history = useHistory();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const user = useUser();
 
-  const doSignIn = (event: any) => {
+  const doSignIn = () => {
     setError(""); // Clear the previous errors
-    signInWithEmailAndPasswordHandler(event);
+    signInWithEmailAndPasswordHandler();
     onSuccess();
   };
 
-  const doGoogle = (event: any) => {
+  const doGoogle = () => {
     setError(""); // Clear the previous errors
     signInWithGoogle();
     onSuccess();
   };
 
-  const signInWithEmailAndPasswordHandler = (event: any) => {
-    auth.signInWithEmailAndPassword(email, password).catch(error => {
+  const signInWithEmailAndPasswordHandler = () => {
+    auth.signInWithEmailAndPassword(email, password).catch((error) => {
       setError(error.message);
       console.log(error);
     });
@@ -62,9 +72,8 @@ const SignIn: React.FC = props => {
 
   const clear = () => {
     setTimeout(() => {
-      // Waits for the next page to be loaded
       setPassword("");
-      setError(""); // and their errors
+      setError("");
     }, 1000);
   };
 
@@ -78,17 +87,17 @@ const SignIn: React.FC = props => {
       <IonItem style={{ flex: 1 }}>
         <IonInput
           placeholder="Email"
-          onIonChange={e => setEmail(e.detail.value!)}
+          onIonChange={(e) => setEmail(e.detail.value!)}
           value={email}
-        ></IonInput>
+        />
       </IonItem>
       <IonItem style={{ flex: 1 }}>
         <IonInput
           type="password"
           placeholder="Password"
-          onIonChange={e => setPassword(e.detail.value!)}
+          onIonChange={(e) => setPassword(e.detail.value!)}
           value={password}
-        ></IonInput>
+        />
       </IonItem>
       <IonItem routerLink="/page/Reset">
         <a>Forgot password?</a>

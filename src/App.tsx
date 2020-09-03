@@ -35,6 +35,10 @@ import SignOutPage from "./pages/SignOut";
 import SignInPage from "./pages/SignIn";
 import PasswordReset from "./pages/PasswordReset";
 
+/**
+ * This is the React functional component at the root of our DOM.
+ * @constructor
+ */
 const App: React.FC = () => {
   const user = useUser();
 
@@ -49,6 +53,10 @@ const App: React.FC = () => {
   );
 };
 
+/**
+ * These are the pages a user is who is not sign in has access to.
+ * @constructor
+ */
 const NotAuthenticated: React.FC = () => {
   return (
     <IonRouterOutlet id="main">
@@ -59,6 +67,10 @@ const NotAuthenticated: React.FC = () => {
   );
 };
 
+/**
+ * One a user is authenticated, they have access to these pages
+ * @constructor
+ */
 const Authenticated: React.FC = () => {
   let history = useHistory();
 

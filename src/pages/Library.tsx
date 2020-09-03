@@ -1,13 +1,13 @@
 import {
-  IonList,
-  IonItem,
-  IonLabel,
-  IonText,
-  IonItemGroup,
   IonIcon,
-  IonItemSliding,
+  IonItem,
+  IonItemGroup,
   IonItemOption,
-  IonItemOptions
+  IonItemOptions,
+  IonItemSliding,
+  IonLabel,
+  IonList,
+  IonText,
 } from "@ionic/react";
 import React from "react";
 import { libraryOutline, trashOutline } from "ionicons/icons";
@@ -16,6 +16,10 @@ import Page from "../components/Page";
 import { useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
 
+/**
+ * The library is a collection of citations the user has bookmarked.
+ * They can add keywords, quotes and track progress through their libraries contents.
+ */
 const LibraryPage = () => {
   const props = { name: "Library" };
   return (
@@ -25,6 +29,11 @@ const LibraryPage = () => {
   );
 };
 
+/**
+ * The library relies on the library context.
+ * This context updates upon snapshot changes on Firebase.
+ * The library is reloaded to reflect those changes.
+ */
 const Library = () => {
   const [library] = useLibrary();
   return (
@@ -38,6 +47,11 @@ const Library = () => {
   );
 };
 
+/**
+ * Controls how each book in the library is displayed.
+ * @param book to display as list item
+ * @constructor
+ */
 const BookItem = (book: any) => {
   const [, , , remove] = useLibrary();
   const { title, authors } = book;

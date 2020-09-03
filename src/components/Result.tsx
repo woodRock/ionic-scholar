@@ -1,19 +1,26 @@
 import {
   IonIcon,
-  IonItemSliding,
   IonItem,
   IonItemGroup,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonLabel,
   IonText,
-  IonItemOptions,
-  IonItemOption
 } from "@ionic/react";
 import React from "react";
-import { libraryOutline, addOutline, documentOutline } from "ionicons/icons";
+import { addOutline, documentOutline, libraryOutline } from "ionicons/icons";
 import { Book, useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
 import Citations from "./Citations";
 
+/**
+ * The component for each search result on explore.
+ * We can add a search result to our library.
+ *
+ * @param book to be displayed
+ * @constructor
+ */
 const Result = (book: Book) => {
   const { title, year, authors, url } = book;
   const [, , add, ,] = useLibrary();

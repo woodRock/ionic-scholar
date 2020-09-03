@@ -1,18 +1,13 @@
-import {
-  IonList,
-  IonItem,
-  IonIcon,
-  IonLabel,
-  IonText,
-  IonButton,
-  IonAvatar,
-  IonImg
-} from "@ionic/react";
-import { mailOutline } from "ionicons/icons";
+import {IonAvatar, IonButton, IonIcon, IonImg, IonItem, IonLabel, IonList, IonText} from "@ionic/react";
+import {mailOutline} from "ionicons/icons";
 import React from "react";
-import { useUser } from "../api/user";
+import {useUser} from "../api/user";
 import Page from "../components/Page";
 
+/**
+ * Displays basic account information to the user.
+ * @constructor
+ */
 const AccountPage: React.FC = () => {
   const props = { name: "Account" };
   return (
@@ -22,6 +17,12 @@ const AccountPage: React.FC = () => {
   );
 };
 
+/**
+ * Component requires the user context to access necessary information.
+ * Displays there username, password and account photo.
+ * Also provides password reset and sign out options.
+ * @constructor React Functional Component
+ */
 const Account: React.FC = () => {
   const user = useUser();
   return (

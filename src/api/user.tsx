@@ -1,5 +1,11 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, generateUserDocument } from "./firebase";
+
+/**
+ * This class retrieves the user information.
+ * It can be used to judge if the user is authenticated.
+ * It updates upon changes to the users authentication state.
+ */
 
 const UserContext = createContext<any>(null);
 
@@ -9,7 +15,7 @@ const UserProvider: React.FC = ({ children }) => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async userAuth => {
+    const unsubscribe = auth.onAuthStateChanged(async (userAuth) => {
       const user = await generateUserDocument(userAuth);
       setUser(user);
     });
@@ -17,7 +23,7 @@ const UserProvider: React.FC = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(userRef => {
+    const unsubscribe = auth.onAuthStateChanged((userRef) => {
       setUser(userRef);
     });
     return unsubscribe;
@@ -25,6 +31,12 @@ const UserProvider: React.FC = ({ children }) => {
 
   return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
 };
+
+/**
+ * Here we provide utility methods for Sign Up validation.
+ * These are on top of the existing Firebase errors.
+ * These provide context sensitive errors before Firebase is called.
+ */
 
 let error = "";
 

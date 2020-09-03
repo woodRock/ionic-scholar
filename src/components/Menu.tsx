@@ -1,8 +1,8 @@
 import {
-  searchOutline,
   libraryOutline,
+  logOutOutline,
+  searchOutline,
   settingsOutline,
-  logOutOutline
 } from "ionicons/icons";
 import {
   IonContent,
@@ -13,48 +13,20 @@ import {
   IonListHeader,
   IonMenu,
   IonMenuToggle,
-  IonNote
+  IonNote,
 } from "@ionic/react";
 import React, { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useUser } from "../api/user";
 import "../theme/Menu.css";
 
-interface AppPage {
-  url: string;
-  iosIcon: string;
-  mdIcon: string;
-  title: string;
-}
-
-const appPages: AppPage[] = [
-  {
-    title: "Explore",
-    url: "/page/Explore",
-    iosIcon: searchOutline,
-    mdIcon: searchOutline
-  },
-  {
-    title: "Library",
-    url: "/page/Library",
-    iosIcon: libraryOutline,
-    mdIcon: libraryOutline
-  },
-  {
-    title: "Account",
-    url: "/page/Account",
-    iosIcon: settingsOutline,
-    mdIcon: settingsOutline
-  },
-  {
-    title: "Sign Out",
-    url: "/page/SignOut",
-    iosIcon: logOutOutline,
-    mdIcon: logOutOutline
-  }
-];
-
-const Menu: React.FC = () => {
+/**
+ * This menu is displayed as a side panel on most pages.
+ * It provides navigation for the user.
+ * Depending on screen size it will automatically minimize.
+ * @constructor
+ */
+const Menu = () => {
   const location = useLocation();
   const user = useUser();
   const { displayName } = user;
@@ -94,5 +66,42 @@ const Menu: React.FC = () => {
     </IonMenu>
   );
 };
+
+/**
+ * Available pages on the menu
+ */
+const appPages: AppPage[] = [
+  {
+    title: "Explore",
+    url: "/page/Explore",
+    iosIcon: searchOutline,
+    mdIcon: searchOutline,
+  },
+  {
+    title: "Library",
+    url: "/page/Library",
+    iosIcon: libraryOutline,
+    mdIcon: libraryOutline,
+  },
+  {
+    title: "Account",
+    url: "/page/Account",
+    iosIcon: settingsOutline,
+    mdIcon: settingsOutline,
+  },
+  {
+    title: "Sign Out",
+    url: "/page/SignOut",
+    iosIcon: logOutOutline,
+    mdIcon: logOutOutline,
+  },
+];
+
+interface AppPage {
+  url: string;
+  iosIcon: string;
+  mdIcon: string;
+  title: string;
+}
 
 export default Menu;

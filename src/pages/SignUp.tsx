@@ -1,4 +1,4 @@
-import { IonList, IonItem, IonInput, IonButton } from "@ionic/react";
+import { IonButton, IonInput, IonItem, IonList } from "@ionic/react";
 import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 import { auth, generateUserDocument } from "../api/firebase";
@@ -6,7 +6,11 @@ import { validation } from "../api/user";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
-const SignUpPage: React.FC = () => {
+/**
+ * This page allows a user to sign up using an email or password.
+ * @constructor
+ */
+const SignUpPage = () => {
   const props = { name: "Sign Up" };
   return (
     <Page {...props}>
@@ -17,7 +21,12 @@ const SignUpPage: React.FC = () => {
   );
 };
 
-const SignUp: React.FC = () => {
+/**
+ * The sign up page has context sensitive error messages.
+ * It is also used to generate a user document on Firebase.
+ * @constructor
+ */
+const SignUp = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password1, setPassword1] = useState("");
@@ -27,7 +36,7 @@ const SignUp: React.FC = () => {
 
   const doSignUp = (event: any) => {
     const { valid, error } = validation(username, password1, password2, email);
-    valid ? onSuccess(event) : setError(prev => error);
+    valid ? onSuccess(event) : setError(error);
   };
 
   const createUserWithEmailAndPasswordHandler = async (event: any) => {
@@ -71,33 +80,33 @@ const SignUp: React.FC = () => {
         <IonInput
           value={email}
           placeholder="email"
-          onIonChange={e => setEmail(e.detail.value!)}
+          onIonChange={(e) => setEmail(e.detail.value!)}
           clearInput
-        ></IonInput>
+        />
       </IonItem>
       <IonItem style={{ flex: 1 }}>
         <IonInput
           value={username}
           placeholder="username"
-          onIonChange={e => setUsername(e.detail.value!)}
+          onIonChange={(e) => setUsername(e.detail.value!)}
           clearInput
-        ></IonInput>
+        />
       </IonItem>
       <IonItem style={{ flex: 1 }}>
         <IonInput
           type="password"
           placeholder="Password"
-          onIonChange={e => setPassword1(e.detail.value!)}
+          onIonChange={(e) => setPassword1(e.detail.value!)}
           value={password1}
-        ></IonInput>
+        />
       </IonItem>
       <IonItem style={{ flex: 1 }}>
         <IonInput
           type="password"
           placeholder="Confirm your password"
-          onIonChange={e => setPassword2(e.detail.value!)}
+          onIonChange={(e) => setPassword2(e.detail.value!)}
           value={password2}
-        ></IonInput>
+        />
       </IonItem>
       <IonButton expand="full" onClick={doSignUp}>
         Sign Up
