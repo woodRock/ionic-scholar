@@ -1,4 +1,5 @@
 # Scholar
+![Deno](https://github.com/woodRock/ionic-scholar/workflows/Deno/badge.svg)
 
 ## Overview
 
