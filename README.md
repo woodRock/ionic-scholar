@@ -20,6 +20,16 @@ This **individually** developed app keeps track of academic references. The app 
 2. [Firestore](https://firebase.google.com/docs/firestore) to store the user's scholary articles, including Google Scholar ID, and their keywords, quotes and progress
 3. [Firebase Authentication](https://firebase.google.com/docs/auth) allows for 3rd party Email/Google Authentication. As a result we can use the application across multiple devices.
 
+## Citations
+```bib
+@online { ionic,
+  author = {Jesse Wood},
+  title = {Ionic Scholar},
+  year = {2020},
+  url = {https://github.com/woodRock/ionic-scholar}
+}
+```
+
 ## Setup
 
 ### Install
