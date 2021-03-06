@@ -63,6 +63,7 @@ const NotAuthenticated: React.FC = () => {
       <Route path="/page/Reset" component={PasswordReset} />
       <Route path="/page/SignUp" component={SignUpPage} />
       <Route path="/page/SignIn" component={SignInPage} />
+      <Redirect from="/" to="/page/SignIn" exact />
     </IonRouterOutlet>
   );
 };
