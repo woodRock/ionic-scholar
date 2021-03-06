@@ -28,6 +28,9 @@ const LibraryProvider: React.FC = ({ children }) => {
   };
 
   const addToLibrary = (book: Book) => {
+    if (book.pdf == null) {
+      book = {...book, pdf: "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png" } 
+    }
     const data = {
       book: serialize(book),
       uid: `${urlFriendly(book.title + book.year)}`,
