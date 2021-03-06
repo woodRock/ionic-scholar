@@ -1,5 +1,5 @@
 # Scholar
-![Node.js CI](https://github.com/woodRock/ionic-scholar/workflows/Node.js%20CI/badge.svg)
+[![Deploy](https://github.com/woodRock/ionic-scholar/actions/workflows/deploy.yml/badge.svg)](https://github.com/woodRock/ionic-scholar/actions/workflows/deploy.yml)
 
 ## Overview
 
