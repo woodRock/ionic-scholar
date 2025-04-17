@@ -14,15 +14,23 @@ import React, { useState } from "react";
 import { Book } from "../api/library";
 import { cite } from "../api/scholar";
 
+// Define component props
+interface CitationsProps {
+  children?: React.ReactNode;
+  book: Book;
+  bid?: string; // Keep for compatibility with other components
+  text?: string;
+}
+
 /**
  * We generate a LaTeX citation for a paper here
  *
- * @param children
- * @param book to generate a citation for
- * @param text name of the button (this component is reused)
- * @constructor
+ * @param props Component properties
+ * @param props.children Child components
+ * @param props.book Book to generate a citation for
+ * @param props.text Name of the button (this component is reused)
  */
-const Citations: React.FC = ({ children, book, text }: Props) => {
+const Citations: React.FC<CitationsProps> = ({ children, book, text }) => {
   const [showCitations, setShowCitations] = useState(false);
   const [copied, setCopied] = useState(false);
   const citation = book ? cite(book) : "";
@@ -79,12 +87,6 @@ const Citations: React.FC = ({ children, book, text }: Props) => {
       </IonPopover>
     </>
   );
-};
-
-type Props = {
-  children?: React.ReactNode;
-  book?: Book;
-  text?: string;
 };
 
 export default Citations;

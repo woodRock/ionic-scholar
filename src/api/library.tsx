@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { collection } from "./firebase";
+import { collection, LibraryCollection } from "./firebase";
 import { useUser } from "./user";
 
 /**
@@ -14,12 +14,20 @@ const LibraryProvider: React.FC = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      collection(user.uid)
+      // Using the updated collection API with proper types
+      const unsubscribe = collection(user.uid)
         .orderBy("title")
-        .onSnapshot((querySnapshot) => {
-          const data: any = querySnapshot.docs.map((doc) => doc.data());
+        .onSnapshot((querySnapshot: any) => {
+          const data: any = querySnapshot.docs.map((doc: any) => doc.data());
           setLibrary(data);
         });
+        
+      // Cleanup subscription on unmount
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
     }
   }, [user]);
 
@@ -29,17 +37,19 @@ const LibraryProvider: React.FC = ({ children }) => {
 
   const addToLibrary = (book: Book) => {
     if (book.pdf == null) {
-      book = {...book, pdf: "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png" } 
+      book = {...book, pdf: "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png" };
     }
     const data = {
       book: serialize(book),
       uid: `${urlFriendly(book.title + book.year)}`,
     };
+    
+    // Using the updated collection API
     collection(user.uid)
       .doc(data.uid)
       .set(book)
-      .catch(function (error) {
-        error("Error writing document: ", error);
+      .catch(function (err: any) {
+        console.error("Error writing document: ", err);
       });
   };
 
@@ -58,10 +68,11 @@ const LibraryProvider: React.FC = ({ children }) => {
   };
 
   const remove = (title: string) => {
+    // Using the updated collection API
     collection(user.uid)
       .get()
-      .then((querySnapshot) => {
-        querySnapshot.docs.forEach((doc) => {
+      .then((querySnapshot: any) => {
+        querySnapshot.docs.forEach((doc: any) => {
           if (doc.data().title === title) {
             collection(user.uid).doc(doc.id).delete();
           }
@@ -100,7 +111,7 @@ export type Book = {
   publication?: string;
 };
 
-const serialize = (object: any): string => {
+const serialize = (object: any): any => {
   return JSON.parse(JSON.stringify(object));
 };
 

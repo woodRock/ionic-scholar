@@ -9,15 +9,21 @@ import {
 } from "@ionic/react";
 import React from "react";
 
+// Define component props type
+interface PageProps {
+  children?: React.ReactNode;
+  name?: string;
+}
+
 /**
  * A wrapper for child components.
  * Renders generic content required for each page.
  *
- * @param children to be rendered inside the Page
- * @param name of the page for the title
- * @constructor
+ * @param props Component properties
+ * @param props.children to be rendered inside the Page
+ * @param props.name of the page for the title
  */
-const Page: React.FC = ({ children, name }: Props) => {
+const Page: React.FC<PageProps> = ({ children, name }) => {
   return (
     <IonPage>
       <IonHeader>
@@ -38,11 +44,6 @@ const Page: React.FC = ({ children, name }: Props) => {
       </IonContent>
     </IonPage>
   );
-};
-
-type Props = {
-  children?: React.ReactNode;
-  name?: string;
 };
 
 export default Page;

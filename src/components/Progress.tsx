@@ -2,7 +2,7 @@ import { IonButton, IonInput, IonItem, IonLabel, IonText } from "@ionic/react";
 import React, { useEffect, useState } from "react";
 import { serialize, urlFriendly } from "../api/library";
 import { useUser } from "../api/user";
-import { collection } from "../api/firebase";
+import { collection, DocumentSnapshot } from "../api/firebase";
 
 /**
  * Lets users track their progress through each paper.
@@ -11,12 +11,17 @@ import { collection } from "../api/firebase";
  * Then they can update their current page as they see fit.
  * This information is stored on Firebase.
  *
- * @param children
- * @param book to track progress for
- * @param bid unique identifier for Firebase firestore
- * @constructor
+ * @param props Component props containing book and bid
  */
-const Progress: React.FC = ({ children, book, bid }: Props) => {
+
+// Define proper types for the component
+interface ProgressProps {
+  children?: React.ReactNode;
+  book: any;
+  bid: string;
+}
+
+const Progress: React.FC<ProgressProps> = ({ children, book, bid }) => {
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -26,12 +31,13 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
 
   useEffect(() => {
     if (user && bid) {
-      collection(user.uid)
+      // Set up snapshot listener for the document
+      const unsubscribe = collection(user.uid)
         .doc(bid)
-        .onSnapshot((doc) => {
-          if (doc !== undefined) {
-            const docX = doc as any;
-            const progress = docX.data().progress;
+        .onSnapshot((doc: DocumentSnapshot) => {
+          if (doc !== undefined && doc.exists) {
+            const data = doc.data();
+            const progress = data?.progress;
             if (progress) {
               setEnabled(true);
               setInput(`${progress.current}`);
@@ -39,29 +45,34 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
             }
           }
         });
+      
+      // Cleanup function to unsubscribe when component unmounts
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
     }
   }, [bid, user]);
 
   const firebase = () => {
-    if (!book) {
+    if (!book || !user) {
       return;
     }
     const progress = serialize({
       current: Number(input),
       total: Number(totalInput),
     });
-    book = {
+    const updatedBook = {
       ...book,
       progress: progress,
     };
-    const data = {
-      book: serialize(book),
-      uid: `${urlFriendly(book.title + book.year)}`,
-    };
+    const docId = `${urlFriendly(book.title + book.year)}`;
+    
     collection(user.uid)
-      .doc(data.uid)
-      .set(book)
-      .catch(function (error) {
+      .doc(docId)
+      .set(updatedBook)
+      .catch(function (error: any) {
         console.error("Error writing document: ", error);
       });
   };
@@ -145,12 +156,6 @@ const Progress: React.FC = ({ children, book, bid }: Props) => {
       </IonButton>
     </IonItem>
   );
-};
-
-type Props = {
-  children?: React.ReactNode;
-  book?: any;
-  bid?: string;
 };
 
 export default Progress;

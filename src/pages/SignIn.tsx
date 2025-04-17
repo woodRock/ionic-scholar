@@ -11,6 +11,7 @@ import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 import { useUser } from "../api/user";
 import { auth, signInWithGoogle } from "../api/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
@@ -18,7 +19,7 @@ import CenterChild from "../components/Center";
  * User authentication with email/password or Google account is provided.
  * @constructor
  */
-const SignInPage = () => {
+const SignInPage: React.FC = () => {
   const props = { name: "Sign In" };
   return (
     <Page {...props}>
@@ -36,7 +37,7 @@ const SignInPage = () => {
  * We provide navigation to Sign Up and Forgot Password from here.
  * @constructor
  */
-const SignIn = () => {
+const SignIn: React.FC = () => {
   const history = useHistory();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,7 +57,8 @@ const SignIn = () => {
   };
 
   const signInWithEmailAndPasswordHandler = () => {
-    auth.signInWithEmailAndPassword(email, password).catch((error) => {
+    // Updated to Firebase v9 syntax
+    signInWithEmailAndPassword(auth, email, password).catch((error: any) => {
       setError(error.message);
       console.log(error);
     });

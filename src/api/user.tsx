@@ -15,7 +15,7 @@ const UserProvider: React.FC = ({ children }) => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (userAuth) => {
+    const unsubscribe = auth.onAuthStateChanged(async (userAuth: any) => {
       const user = await generateUserDocument(userAuth);
       setUser(user);
     });
@@ -23,7 +23,7 @@ const UserProvider: React.FC = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((userRef) => {
+    const unsubscribe = auth.onAuthStateChanged((userRef: any) => {
       setUser(userRef);
     });
     return unsubscribe;

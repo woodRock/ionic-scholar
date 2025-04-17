@@ -2,6 +2,7 @@ import { IonButton, IonInput, IonItem, IonList } from "@ionic/react";
 import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 import { auth, generateUserDocument } from "../api/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { validation } from "../api/user";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
@@ -10,7 +11,7 @@ import CenterChild from "../components/Center";
  * This page allows a user to sign up using an email or password.
  * @constructor
  */
-const SignUpPage = () => {
+const SignUpPage: React.FC = () => {
   const props = { name: "Sign Up" };
   return (
     <Page {...props}>
@@ -26,7 +27,7 @@ const SignUpPage = () => {
  * It is also used to generate a user document on Firebase.
  * @constructor
  */
-const SignUp = () => {
+const SignUp: React.FC = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password1, setPassword1] = useState("");
@@ -34,25 +35,28 @@ const SignUp = () => {
   const [error, setError] = useState("");
   const history = useHistory();
 
-  const doSignUp = (event: any) => {
+  const doSignUp = (event: React.MouseEvent) => {
     const { valid, error } = validation(username, password1, password2, email);
     valid ? onSuccess(event) : setError(error);
   };
 
-  const createUserWithEmailAndPasswordHandler = async (event: any) => {
+  const createUserWithEmailAndPasswordHandler = async (event: React.MouseEvent) => {
     event.preventDefault();
     try {
-      const { user } = await auth.createUserWithEmailAndPassword(
+      // Updated to Firebase v9 syntax
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
         email,
         password1
       );
-      generateUserDocument(user, { username });
+      const user = userCredential.user;
+      await generateUserDocument(user, { username });
     } catch (error) {
       setError("Error Signing up with email and password");
     }
   };
 
-  const onSuccess = (event: any) => {
+  const onSuccess = (event: React.MouseEvent) => {
     setError("Success");
     createUserWithEmailAndPasswordHandler(event);
     history.push("/page/Explore");

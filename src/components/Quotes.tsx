@@ -1,21 +1,25 @@
 import { IonButton, IonInput, IonItem, IonLabel, IonList } from "@ionic/react";
 import { v4 } from "uuid";
 import React, { useEffect, useState } from "react";
-import { collection } from "../api/firebase";
+import { collection, DocumentSnapshot } from "../api/firebase";
 import { useUser } from "../api/user";
 import { serialize, urlFriendly } from "../api/library";
+
+// Define component props
+interface QuotesProps {
+  children?: React.ReactNode;
+  book: any;
+  bid: string;
+}
 
 /**
  * A user can store relevant quotes from each paper.
  * These are a comma separated list in quotations.
  * More than one quote can be stored for each text.
  *
- * @param children
- * @param book to store quotes for
- * @param bid unique indentifier on Firebase firestore
- * @constructor
+ * @param props Component properties
  */
-const Quotes: React.FC = ({ children, book, bid }: Props) => {
+const Quotes: React.FC<QuotesProps> = ({ children, book, bid }) => {
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState(false);
   const user = useUser();
@@ -24,11 +28,11 @@ const Quotes: React.FC = ({ children, book, bid }: Props) => {
     if (user && bid) {
       collection(user.uid)
         .doc(bid)
-        .onSnapshot((doc) => {
-          if (doc !== undefined) {
-            const docX = doc as any;
-            const quotes = docX.data().quotes;
-            setInput(quotes ? `${quotes.join(`","`)}` : "");
+        .onSnapshot((doc: DocumentSnapshot) => {
+          if (doc !== undefined && doc.exists) {
+            const data = doc.data();
+            const quotes = data?.quotes;
+            setInput(quotes && Array.isArray(quotes) ? `${quotes.join(`","`)}` : "");
           }
         });
     }
@@ -40,24 +44,25 @@ const Quotes: React.FC = ({ children, book, bid }: Props) => {
   };
 
   const firebase = () => {
+    if (!book || !user) {
+      return;
+    }
+    
     const quotes = input.length
       ? input.split(`","`).map((quote) => quote.replace(/"/g, ""))
       : [];
-    book = {
+      
+    const updatedBook = {
       ...book,
       quotes: quotes,
     };
-    if (!book) {
-      return;
-    }
-    const data = {
-      book: serialize(book),
-      uid: `${urlFriendly(book.title + book.year)}`,
-    };
+    
+    const docId = `${urlFriendly(book.title + book.year)}`;
+    
     collection(user.uid)
-      .doc(data.uid)
-      .set(book)
-      .catch(function (error) {
+      .doc(docId)
+      .set(updatedBook)
+      .catch(function (error: any) {
         console.error("Error writing document: ", error);
       });
   };
@@ -95,12 +100,6 @@ const Quotes: React.FC = ({ children, book, bid }: Props) => {
       </IonButton>
     </IonItem>
   );
-};
-
-type Props = {
-  children?: React.ReactNode;
-  book?: any;
-  bid?: string;
 };
 
 export default Quotes;

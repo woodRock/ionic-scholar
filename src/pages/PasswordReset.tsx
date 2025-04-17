@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { IonButton, IonInput, IonItem, IonLabel, IonList } from "@ionic/react";
 import { auth } from "../api/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { useHistory } from "react-router-dom";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
@@ -11,7 +12,7 @@ import CenterChild from "../components/Center";
  * Or users can update their existing password due to security concerns.
  * @constructor
  */
-const PasswordReset = () => {
+const PasswordReset: React.FC = () => {
   const props = { name: "Reset Password" };
   return (
     <Page {...props}>
@@ -28,7 +29,7 @@ const PasswordReset = () => {
  * If valid the user is taken to a confirmation page saying an email has been sent.
  * @constructor
  */
-const Reset = () => {
+const Reset: React.FC = () => {
   const [email, setEmail] = useState("");
   const [emailHasBeenSent, setEmailHasBeenSent] = useState(false);
   const [error, setError] = useState("");
@@ -36,8 +37,8 @@ const Reset = () => {
 
   const sendResetEmail = () => {
     setError("");
-    auth
-      .sendPasswordResetEmail(email)
+    // Update to Firebase v9 syntax
+    sendPasswordResetEmail(auth, email)
       .then(() => {
         setEmailHasBeenSent(true);
         setTimeout(() => {
@@ -81,7 +82,7 @@ const Reset = () => {
  * Once the user enters a valid email address they are taken here.
  * @constructor
  */
-const Success = () => {
+const Success: React.FC = () => {
   return (
     <IonList>
       <IonItem style={{ color: "green" }}>

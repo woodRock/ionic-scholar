@@ -1,21 +1,41 @@
 import { IonButton, IonInput, IonItem, IonLabel, IonText } from "@ionic/react";
 import React, { useEffect, useState } from "react";
 import { toList } from "../api/scholar";
-import { collection } from "../api/firebase";
+import { collection, LibraryCollection } from "../api/firebase";
 import { serialize, urlFriendly } from "../api/library";
 import { useUser } from "../api/user";
+
+// Define the Book type properly
+type Book = {
+  title: string;
+  year: number;
+  authors: string[];
+  url?: string;
+  numCitations?: number;
+  description?: string;
+  pdf?: string;
+  relatedUrl?: string;
+  urlVersionsList?: string;
+  publication?: string;
+  keywords?: string[];
+  [key: string]: any;
+};
+
+// Define component props properly
+interface KeywordsProps {
+  children?: React.ReactNode;
+  book: Book;
+  bid: string;
+}
 
 /**
  * We can store keywords for each the contents of our library.
  * These can be used to jog our memory for why we chose to store something.
  * These are stored on Firebase and can be updated.
  *
- * @param children
- * @param book to store keywords for
- * @param bid Firebase unique identifier for book document
- * @constructor
+ * @param props Component props containing book and bid
  */
-const Keywords: React.FC = ({ children, book, bid }: Props) => {
+const Keywords: React.FC<KeywordsProps> = ({ children, book, bid }) => {
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState(false);
   const user = useUser();
@@ -26,14 +46,16 @@ const Keywords: React.FC = ({ children, book, bid }: Props) => {
         .doc(bid)
         .get()
         .then((doc) => {
-          if (doc !== undefined) {
-            const docX = doc as any;
-            const keywords = docX.data().keywords;
+          if (doc.exists && doc.data) {
+            const keywords = doc.data().keywords;
             setInput(keywords ? keywords.join(",") : "");
           }
+        })
+        .catch((error: unknown) => {
+          console.error("Error fetching keywords:", error);
         });
     }
-  }, [bid, user, user.uid]);
+  }, [bid, user]);
 
   const addKeyword = () => {
     firebaseKeywords();
@@ -41,19 +63,22 @@ const Keywords: React.FC = ({ children, book, bid }: Props) => {
   };
 
   const firebaseKeywords = () => {
-    book = { ...book, keywords: input.split(",") };
-    if (!book) {
+    if (!book || !user) {
       return;
     }
-    const data = {
-      book: serialize(book),
-      uid: `${urlFriendly(book.title + book.year)}`,
+    
+    const updatedBook = { 
+      ...book, 
+      keywords: input.split(",").map(keyword => keyword.trim()).filter(keyword => keyword !== "") 
     };
+    
+    const docId = `${urlFriendly(book.title + book.year)}`;
+    
     collection(user.uid)
-      .doc(data.uid)
-      .set(book)
-      .catch(function (error) {
-        console.error("Error writing document: ", error);
+      .doc(docId)
+      .set(updatedBook)
+      .catch(function (error: any) {
+        console.error("Error writing document:", error);
       });
   };
 
@@ -75,18 +100,14 @@ const Keywords: React.FC = ({ children, book, bid }: Props) => {
   return (
     <IonItem>
       <IonLabel>Keywords</IonLabel>
-      <IonText slot="end">{toList(input.split(","))}</IonText>
+      <IonText slot="end">
+        {input ? toList(input.split(",").filter(keyword => keyword.trim() !== "")) : ""}
+      </IonText>
       <IonButton slot="end" onClick={() => setEdit(!edit)}>
         Edit
       </IonButton>
     </IonItem>
   );
-};
-
-type Props = {
-  children?: React.ReactNode;
-  book?: any;
-  bid?: string;
 };
 
 export default Keywords;
