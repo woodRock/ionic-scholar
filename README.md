@@ -1,6 +1,6 @@
 # Scholar
 [![Deploy](https://github.com/woodRock/ionic-scholar/actions/workflows/deploy.yml/badge.svg)](https://github.com/woodRock/ionic-scholar/actions/workflows/deploy.yml)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/74fbc039-3aca-4920-b8d1-b27f6883f71f/deploy-status)](https://app.netlify.com/sites/academic-scholar/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/6a024dc9-e34e-48c9-9866-ab33e0d6f8f2/deploy-status)](https://app.netlify.com/sites/ionic-scholar/deploys)
 
 ## Overview
 
