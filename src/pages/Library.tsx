@@ -291,6 +291,9 @@ const BookCard = (book: any) => {
         
         <IonCardContent style={{ flex: 1 }}>
           <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>{toList(authors)}</IonLabel>
+          <div style={{ marginTop: '8px' }}>
+            <IonBadge color="light" style={{ fontSize: '0.7rem' }}>{book.numCitations || 0} CITATIONS</IonBadge>
+          </div>
         </IonCardContent>
 
         <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ion-border-color, #eee)', alignItems: 'center' }}>

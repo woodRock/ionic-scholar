@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { 
   IonHeader, 
   IonToolbar, 
@@ -17,6 +17,7 @@ import {
 import { shareSocialOutline, expandOutline, scanOutline, contractOutline, closeOutline } from 'ionicons/icons';
 import ForceGraph2D from 'react-force-graph-2d';
 import { motion } from 'framer-motion';
+import { forceCollide } from 'd3-force';
 import Page from '../components/Page';
 import { useLibrary } from '../api/library';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 const NetworkMapPage: React.FC = () => {
   const [library] = useLibrary();
   const navigate = useNavigate();
+  const fgRef = useRef<any>();
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [hoverNode, setHoverNode] = useState<any>(null);
   const [highlightNodes, setHighlightNodes] = useState(new Set());
@@ -31,6 +33,15 @@ const NetworkMapPage: React.FC = () => {
   const [graphData, setGraphData] = useState<{ nodes: any[], links: any[] }>({ nodes: [], links: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [linkFilter, setLinkFilter] = useState<'all' | 'author' | 'tag'>('all');
+  const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
+
+  // --- Graph Simulation Setup ---
+  useEffect(() => {
+    if (fgRef.current) {
+      // Add collision force to prevent overlap
+      fgRef.current.d3Force('collision', forceCollide((node: any) => node.val + 25));
+    }
+  }, [isLoading]);
 
   // --- Process library into Graph Data ---
   useEffect(() => {
@@ -53,8 +64,8 @@ const NetworkMapPage: React.FC = () => {
         year: paper.year,
         tags: paper.keywords || [],
         citations: paper.numCitations || 0,
-        val: Math.sqrt(paper.numCitations || 1) + 3,
-        color: colorIndex !== -1 ? domainColors[colorIndex] : '#4b5563',
+        val: Math.sqrt(paper.numCitations || 1) + 4, // Slightly larger base size
+        color: colorIndex !== -1 ? domainColors[colorIndex] : '#94a3b8', // Brighter gray for uncategorized
         neighbors: [],
         links: []
       };
@@ -102,7 +113,7 @@ const NetworkMapPage: React.FC = () => {
 
   return (
     <Page name="Research Map">
-      <div style={{ position: 'relative', height: '100%', width: '100%', background: '#020617' }}>
+      <div style={{ position: 'relative', height: '100%', width: '100%', background: '#020617', cursor }}>
         
         {/* Modern Floating UI */}
         <div style={{ 
@@ -135,12 +146,51 @@ const NetworkMapPage: React.FC = () => {
           </div>
         ) : (
           <ForceGraph2D
+            ref={fgRef}
             graphData={graphData}
             backgroundColor="#020617"
             nodeRelSize={1}
-            nodeColor={(node: any) => {
-              if (highlightNodes.size > 0 && !highlightNodes.has(node.id)) return 'rgba(31, 41, 55, 0.5)';
-              return node.color;
+            nodeVal={node => (node as any).val}
+            nodeColor={node => {
+              const isSelected = highlightNodes.has((node as any).id);
+              const isHovered = node === hoverNode;
+              const isHighlighted = highlightNodes.size === 0 || isSelected || isHovered;
+              return isHighlighted ? (node as any).color : 'rgba(31, 41, 55, 0.5)';
+            }}
+            onNodeClick={handleNodeClick}
+            onNodeHover={(node) => {
+              setHoverNode(node);
+              setCursor(node ? 'pointer' : 'default');
+            }}
+            d3AlphaDecay={0.03}
+            cooldownTicks={200}
+            nodePointerAreaPaint={(node: any, color, ctx) => {
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, node.val + 10, 0, 2 * Math.PI, false);
+              ctx.fill();
+            }}
+            nodeCanvasObjectMode={() => 'after'}
+            nodeCanvasObject={(node: any, ctx, globalScale) => {
+              const isSelected = highlightNodes.has(node.id);
+              const isHovered = node === hoverNode;
+              const size = node.val;
+
+              // Only draw labels here to not interfere with node events
+              if (isSelected || isHovered) {
+                const label = node.title;
+                const fontSize = Math.max(4, 14 / globalScale);
+                ctx.font = `${isSelected ? 'bold' : 'normal'} ${fontSize}px Inter, system-ui, sans-serif`;
+                const textWidth = ctx.measureText(label).width;
+                
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.95)';
+                ctx.fillRect(node.x - textWidth/2 - 4, node.y + size + 2, textWidth + 8, fontSize + 4);
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = isSelected ? '#00e676' : '#fff';
+                ctx.fillText(label, node.x, node.y + size + 4);
+              }
             }}
             linkColor={(link: any) => {
               if (highlightLinks.size > 0 && !highlightLinks.has(link)) return 'rgba(31, 41, 55, 0.1)';
@@ -149,42 +199,6 @@ const NetworkMapPage: React.FC = () => {
             linkWidth={(link: any) => highlightLinks.has(link) ? 3 : 1}
             linkDirectionalParticles={(link: any) => highlightLinks.has(link) ? 2 : 0}
             linkDirectionalParticleWidth={2}
-            onNodeClick={handleNodeClick}
-            onNodeHover={node => setHoverNode(node)}
-            nodePointerAreaPaint={(node: any, color, ctx) => {
-              ctx.fillStyle = color;
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, node.val + 2, 0, 2 * Math.PI, false);
-              ctx.fill();
-            }}
-            nodeCanvasObject={(node: any, ctx, globalScale) => {
-              const isHighlighted = highlightNodes.has(node.id) || node === hoverNode;
-              const size = node.val;
-              
-              // Draw Node Circle
-              ctx.beginPath();
-              ctx.arc(node.x, node.y, size, 0, 2 * Math.PI, false);
-              ctx.fillStyle = (highlightNodes.size > 0 && !isHighlighted) ? 'rgba(31, 41, 55, 0.5)' : node.color;
-              ctx.fill();
-
-              // Conditional Label Rendering
-              const shouldShowLabel = isHighlighted || (globalScale > 1.5 && node.citations > 50);
-              
-              if (shouldShowLabel) {
-                const label = node.title;
-                const fontSize = Math.max(4, 12 / globalScale);
-                ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-                const textWidth = ctx.measureText(label).width;
-                
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
-                ctx.fillRect(node.x - textWidth/2 - 2, node.y + size + 2, textWidth + 4, fontSize + 2);
-                
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillStyle = isHighlighted ? '#fff' : '#94a3b8';
-                ctx.fillText(label, node.x, node.y + size + 3);
-              }
-            }}
           />
         )}
 

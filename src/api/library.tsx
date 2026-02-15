@@ -81,7 +81,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         try {
           // Use Semantic Scholar search to find the paper and its metadata
           const response = await fetch(
-            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract`
+            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract,citationCount`
           );
           
           if (response.status === 429) throw new Error("RATE_LIMIT");
@@ -94,6 +94,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
             
             if (!book.url && paper.url) updates.url = paper.url;
             if (!book.description && paper.abstract) updates.description = paper.abstract;
+            if (paper.citationCount !== undefined) updates.numCitations = paper.citationCount;
 
             if (Object.keys(updates).length > 0) {
               console.log(`[Background] Enriched: ${book.title}`);
@@ -124,6 +125,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       pdf: book.pdf || "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png",
       authors: book.authors || ["Unknown Author"],
       year: book.year || new Date().getFullYear(),
+      numCitations: book.numCitations || 0,
       description: book.description || "",
       keywords: (book.keywords || []).map((k: string) => k.toLowerCase())
     };

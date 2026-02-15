@@ -7,6 +7,7 @@ import {
   IonCardTitle,
   IonLabel,
   IonText,
+  IonBadge,
 } from "@ionic/react";
 import { useParams } from "react-router-dom";
 import React, { useEffect, useState } from "react";
@@ -100,6 +101,11 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
         <p style={{ fontSize: '1.1rem', color: 'var(--ion-color-step-600)', lineHeight: '1.5', marginBottom: '12px' }}>
           {toList(authors)}
         </p>
+        
+        <div style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
+          <IonBadge color="light">{book.numCitations || 0} Citations</IonBadge>
+          {book.publication && <IonBadge color="secondary">{book.publication}</IonBadge>}
+        </div>
         
         {/* Cardless Keywords */}
         <div style={{ marginBottom: '24px' }}>
