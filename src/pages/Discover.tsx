@@ -154,6 +154,7 @@ const DiscoverPage = () => {
             ...p,
             description: p.abstract,
             authors: (p.authors || []).map((a: any) => a.name),
+            numCitations: p.citationCount || 0,
             score: likeScore - (dislikeScore * 0.5)
           };
         })

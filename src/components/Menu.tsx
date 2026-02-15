@@ -5,6 +5,7 @@ import {
   settingsOutline,
   sparklesOutline,
   bookOutline,
+  shareSocialOutline,
 } from "ionicons/icons";
 import {
   IonContent,
@@ -107,6 +108,12 @@ const appPages: AppPage[] = [
     url: "/page/Read",
     iosIcon: bookOutline,
     mdIcon: bookOutline,
+  },
+  {
+    title: "Research Map",
+    url: "/page/NetworkMap",
+    iosIcon: shareSocialOutline,
+    mdIcon: shareSocialOutline,
   },
   {
     title: "Account",

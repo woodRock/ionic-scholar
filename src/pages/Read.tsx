@@ -140,11 +140,22 @@ const ReadPage = () => {
 
 const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: boolean, onSwipe: (dir: 'left' | 'right') => void, onRate: (r: number) => void }) => {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
   
   const addOpacity = useTransform(x, [50, 120], [0, 1]);
   const skipOpacity = useTransform(x, [-120, -50], [1, 0]);
+
+  const handleDragEnd = (_: any, info: any) => {
+    const threshold = 120;
+    const velocity = info.velocity.x;
+    
+    if (info.offset.x > threshold || velocity > 500) {
+      onSwipe('right');
+    } else if (info.offset.x < -threshold || velocity < -500) {
+      onSwipe('left');
+    }
+  };
 
   return (
     <motion.div
@@ -156,13 +167,17 @@ const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: b
       }}
       drag={isTop ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={(_, info) => {
-        if (info.offset.x > 100) onSwipe('right');
-        else if (info.offset.x < -100) onSwipe('left');
+      dragElastic={0.9}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+      onDragEnd={handleDragEnd}
+      initial={{ scale: 0.9, opacity: 0, y: 20 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ 
+        x: x.get() === 0 ? 0 : (x.get() > 0 ? 800 : -800), 
+        opacity: 0, 
+        scale: 0.5,
+        transition: { duration: 0.4, ease: "easeIn" } 
       }}
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ x: x.get() > 0 ? 600 : -600, opacity: 0, transition: { duration: 0.3 } }}
     >
       <div style={{ 
         width: '100%', height: '100%', background: 'white', borderRadius: '28px',
