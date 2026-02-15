@@ -4,6 +4,10 @@ import App from "./App";
 import LibraryProvider from "./api/library";
 import UserProvider from "./api/user";
 import "./api/firebase";
+import { registerSW } from 'virtual:pwa-register';
+
+// Register PWA service worker
+registerSW({ immediate: true });
 
 /**
  * The application requires two contexts to be provided at the DOM root.

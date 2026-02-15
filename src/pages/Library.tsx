@@ -82,9 +82,14 @@ const Library = () => {
   // Filter and Sort Logic
   const filteredLibrary = library
     .filter((book: any) => {
+      const searchLower = searchText.toLowerCase();
+      
+      // Deep Search Indexing
       const matchesSearch = 
-        book.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        book.authors.join(" ").toLowerCase().includes(searchText.toLowerCase());
+        book.title.toLowerCase().includes(searchLower) ||
+        book.authors.join(" ").toLowerCase().includes(searchLower) ||
+        (book.description || "").toLowerCase().includes(searchLower) ||
+        (book.quotes || []).some((q: string) => q.toLowerCase().includes(searchLower));
       
       const matchesTags = 
         selectedTags.length === 0 || 
