@@ -148,114 +148,117 @@ ${userMsg}
   };
 
   return (
-    <Page name="Research Assistant">
-      <div style={{ height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
-        <IonContent ref={contentRef} style={{ flex: 1, '--background': 'var(--ion-background-color)' }}>
-          <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            {messages.map((msg, idx) => (
-              <div key={idx} style={{ 
-                display: 'flex', 
-                gap: '12px', 
-                marginBottom: '24px',
-                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
+    <Page 
+      name="Research Assistant"
+      footer={
+        <IonFooter style={{ border: 'none' }}>
+          <div style={{ 
+            padding: '16px', 
+            background: 'var(--ion-background-color)', 
+            borderTop: '1px solid var(--ion-border-color)',
+            maxWidth: '800px',
+            margin: '0 auto',
+            width: '100%'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              background: 'var(--ion-color-step-100)', 
+              borderRadius: '24px', 
+              padding: '4px',
+              alignItems: 'flex-end'
+            }}>
+              <IonTextarea 
+                placeholder="Ask about your library..." 
+                value={input}
+                onIonInput={e => setInput(e.detail.value!)}
+                autoGrow={true}
+                rows={1}
+                style={{ '--padding-start': '16px', '--padding-end': '16px', maxHeight: '150px' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <IonButton 
+                shape="round" 
+                onClick={handleSend} 
+                disabled={!input.trim() || isLoading}
+                style={{ margin: '4px' }}
+              >
+                <IonIcon slot="icon-only" icon={sendOutline} />
+              </IonButton>
+            </div>
+          </div>
+        </IonFooter>
+      }
+    >
+      <IonContent ref={contentRef} style={{ '--background': 'var(--ion-background-color)' }}>
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+          {messages.map((msg, idx) => (
+            <div key={idx} style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              marginBottom: '24px',
+              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
+            }}>
+              <div style={{ flexShrink: 0 }}>
+                {msg.role === 'model' ? (
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IonIcon icon={sparkles} style={{ color: 'white', fontSize: '18px' }} />
+                  </div>
+                ) : (
+                  <IonIcon icon={personCircleOutline} style={{ fontSize: '36px', color: '#ccc' }} />
+                )}
+              </div>
+              
+              <div style={{ 
+                background: msg.role === 'user' ? 'var(--ion-color-primary)' : 'var(--ion-color-step-50)',
+                color: msg.role === 'user' ? 'white' : 'var(--ion-text-color)',
+                padding: '16px',
+                borderRadius: '18px',
+                borderTopLeftRadius: msg.role === 'model' ? '4px' : '18px',
+                borderTopRightRadius: msg.role === 'user' ? '4px' : '18px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                maxWidth: '85%'
               }}>
-                <div style={{ flexShrink: 0 }}>
-                  {msg.role === 'model' ? (
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IonIcon icon={sparkles} style={{ color: 'white', fontSize: '18px' }} />
-                    </div>
-                  ) : (
-                    <IonIcon icon={personCircleOutline} style={{ fontSize: '36px', color: '#ccc' }} />
-                  )}
+                <div style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
                 
-                <div style={{ 
-                  background: msg.role === 'user' ? 'var(--ion-color-primary)' : 'var(--ion-color-step-50)',
-                  color: msg.role === 'user' ? 'white' : 'var(--ion-text-color)',
-                  padding: '16px',
-                  borderRadius: '18px',
-                  borderTopLeftRadius: msg.role === 'model' ? '4px' : '18px',
-                  borderTopRightRadius: msg.role === 'user' ? '4px' : '18px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  maxWidth: '85%'
-                }}>
-                  <div style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                  </div>
-                  
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-                      <IonText style={{ fontSize: '0.7rem', fontWeight: 'bold', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
-                        CONSIDERED SOURCES:
-                      </IonText>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {msg.sources.slice(0, 3).map((s, i) => (
-                          <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                            {s.length > 20 ? s.substring(0, 20) + '...' : s}
-                          </span>
-                        ))}
-                        {msg.sources.length > 3 && (
-                          <span style={{ fontSize: '0.65rem', padding: '2px 6px' }}>+{msg.sources.length - 3} more</span>
-                        )}
-                      </div>
+                {msg.sources && msg.sources.length > 0 && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                    <IonText style={{ fontSize: '0.7rem', fontWeight: 'bold', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
+                      CONSIDERED SOURCES:
+                    </IonText>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {msg.sources.slice(0, 3).map((s, i) => (
+                        <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(0,0,0,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                          {s.length > 20 ? s.substring(0, 20) + '...' : s}
+                        </span>
+                      ))}
+                      {msg.sources.length > 3 && (
+                        <span style={{ fontSize: '0.65rem', padding: '2px 6px' }}>+{msg.sources.length - 3} more</span>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            ))}
-            {isLoading && (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IonIcon icon={sparkles} style={{ color: 'white', fontSize: '18px' }} />
-                </div>
-                <div style={{ background: 'var(--ion-color-step-50)', padding: '16px', borderRadius: '18px', borderTopLeftRadius: '4px' }}>
-                  <IonSpinner name="dots" color="primary" />
-                </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IonIcon icon={sparkles} style={{ color: 'white', fontSize: '18px' }} />
               </div>
-            )}
-          </div>
-        </IonContent>
-
-        <div style={{ 
-          padding: '16px', 
-          background: 'var(--ion-background-color)', 
-          borderTop: '1px solid var(--ion-border-color)',
-          maxWidth: '800px',
-          margin: '0 auto',
-          width: '100%'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            background: 'var(--ion-color-step-100)', 
-            borderRadius: '24px', 
-            padding: '4px',
-            alignItems: 'flex-end'
-          }}>
-            <IonTextarea 
-              placeholder="Ask about your library..." 
-              value={input}
-              onIonInput={e => setInput(e.detail.value!)}
-              autoGrow={true}
-              rows={1}
-              style={{ '--padding-start': '16px', '--padding-end': '16px', maxHeight: '150px' }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <IonButton 
-              shape="round" 
-              onClick={handleSend} 
-              disabled={!input.trim() || isLoading}
-              style={{ margin: '4px' }}
-            >
-              <IonIcon slot="icon-only" icon={sendOutline} />
-            </IonButton>
-          </div>
+              <div style={{ background: 'var(--ion-color-step-50)', padding: '16px', borderRadius: '18px', borderTopLeftRadius: '4px' }}>
+                <IonSpinner name="dots" color="primary" />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </IonContent>
     </Page>
   );
 };

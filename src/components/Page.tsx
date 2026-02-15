@@ -12,6 +12,7 @@ import React from "react";
 // Define component props type
 interface PageProps {
   children?: React.ReactNode;
+  footer?: React.ReactNode;
   name?: string;
 }
 
@@ -21,9 +22,10 @@ interface PageProps {
  *
  * @param props Component properties
  * @param props.children to be rendered inside the Page
+ * @param props.footer optional footer content
  * @param props.name of the page for the title
  */
-const Page: React.FC<PageProps> = ({ children, name }) => {
+const Page: React.FC<PageProps> = ({ children, name, footer }) => {
   return (
     <IonPage>
       <IonHeader>
@@ -42,6 +44,7 @@ const Page: React.FC<PageProps> = ({ children, name }) => {
         </IonHeader>
         {children}
       </IonContent>
+      {footer}
     </IonPage>
   );
 };
