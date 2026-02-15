@@ -93,12 +93,6 @@ const appPages: AppPage[] = [
     mdIcon: searchOutline,
   },
   {
-    title: "Library",
-    url: "/page/Library",
-    iosIcon: libraryOutline,
-    mdIcon: libraryOutline,
-  },
-  {
     title: "Discover",
     url: "/page/Discover",
     iosIcon: sparklesOutline,
@@ -111,16 +105,22 @@ const appPages: AppPage[] = [
     mdIcon: bookOutline,
   },
   {
-    title: "Research Map",
-    url: "/page/NetworkMap",
-    iosIcon: shareSocialOutline,
-    mdIcon: shareSocialOutline,
+    title: "Library",
+    url: "/page/Library",
+    iosIcon: libraryOutline,
+    mdIcon: libraryOutline,
   },
   {
     title: "Assistant",
     url: "/page/Chat",
     iosIcon: chatbubblesOutline,
     mdIcon: chatbubblesOutline,
+  },
+  {
+    title: "Research Map",
+    url: "/page/NetworkMap",
+    iosIcon: shareSocialOutline,
+    mdIcon: shareSocialOutline,
   },
   {
     title: "Account",
