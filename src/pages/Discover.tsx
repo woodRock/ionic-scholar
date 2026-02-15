@@ -56,10 +56,11 @@ const cosineSimilarity = (vecA: Record<string, number>, vecB: Record<string, num
 // --- Component ---
 
 const DiscoverPage = () => {
-  const [library, , add] = useLibrary();
+  const [library, , add, , , , pinnedTags] = useLibrary();
   const [stack, setRecommendations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
+  const [currentSeed, setCurrentSeed] = useState<string>("");
   const [present] = useIonToast();
 
   // Load swiped history once
@@ -115,12 +116,18 @@ const DiscoverPage = () => {
         else dislikes.push(freq);
       });
 
-      // 2. Determine "Seed" topics from likes or library
-      const topics = likes.length > 0 
-        ? Object.keys(likes[0]).slice(0, 2)
-        : library.flatMap((b: any) => b.keywords || []).slice(0, 2);
+      // 2. Determine "Seed" topics with randomness
+      const likedTopics = likes.length > 0 ? Object.keys(likes[Math.floor(Math.random() * likes.length)]).slice(0, 3) : [];
+      const libraryTopics = library.flatMap((b: any) => b.keywords || []);
       
-      const queryStr = topics.length > 0 ? topics.join(" ") : "latest academic research";
+      const allOptions = Array.from(new Set([...pinnedTags, ...likedTopics, ...libraryTopics]));
+      
+      // Pick 1-2 random topics for this specific fetch
+      const shuffled = allOptions.sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, Math.min(2, shuffled.length));
+      const queryStr = selected.length > 0 ? selected.join(" ") : "latest academic research";
+      
+      setCurrentSeed(selected.join(", ") || "General Interest");
 
       // 3. Fetch candidates
       const response = await fetch(
@@ -146,7 +153,7 @@ const DiscoverPage = () => {
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 15);
 
-      setRecommendations(candidates.reverse()); // Reverse so top score is at the end of array (top of stack)
+      setRecommendations(candidates.reverse()); 
     } catch (err) {
       console.error(err);
     } finally {
@@ -177,7 +184,11 @@ const DiscoverPage = () => {
             <IonIcon icon={sparklesOutline} color="secondary" />
             Scholar Discovery
           </h1>
-          <p style={{ color: 'var(--ion-color-step-600)', fontSize: '0.9rem', marginTop: '4px' }}>Building your research profile...</p>
+          {currentSeed && (
+            <IonBadge color="light" style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: '400', letterSpacing: '0.05em' }}>
+              EXPLORING: {currentSeed.toUpperCase()}
+            </IonBadge>
+          )}
         </div>
 
         <div style={{ width: '100%', maxWidth: '380px', height: '520px', position: 'relative', perspective: '1000px' }}>
