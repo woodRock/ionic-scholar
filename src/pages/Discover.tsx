@@ -78,9 +78,11 @@ const DiscoverPage = () => {
   const handleSwipe = async (paper: any, direction: 'left' | 'right') => {
     if (!auth.currentUser) return;
     
+    const paperId = paper.title.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    
     // Save swipe to Firebase for KNN training
-    const swipeRef = doc(firestore, `users/${auth.currentUser.uid}/swipes`, paper.title.toLowerCase().replace(/\s/g, "_"));
-    await setDoc(swipeRef, {
+    const swipeRef = doc(firestore, `users/${auth.currentUser.uid}/swipes`, paperId);
+    setDoc(swipeRef, {
       title: paper.title,
       abstract: paper.description || "",
       direction,
@@ -89,11 +91,11 @@ const DiscoverPage = () => {
 
     if (direction === 'right') {
       add(paper);
-      present({ message: "Added to Library!", duration: 1500, color: "success", position: 'bottom' });
+      present({ message: "Added to Library!", duration: 1000, color: "success", position: 'bottom' });
     }
 
     setRecommendations(prev => prev.filter(p => p.title !== paper.title));
-    setSwipedIds(prev => new Set(prev).add(paper.title.toLowerCase().replace(/\s/g, "_")));
+    setSwipedIds(prev => new Set(prev).add(paperId));
   };
 
   const fetchRecommendations = async () => {
@@ -128,31 +130,23 @@ const DiscoverPage = () => {
 
       // 4. Rank candidates using KNN logic
       const candidates = (result.data || [])
-        .filter((p: any) => !swipedIds.has(p.title.toLowerCase().replace(/\s/g, "_")))
+        .filter((p: any) => !swipedIds.has(p.title.toLowerCase().replace(/[^a-z0-9]/g, "_")))
         .map((p: any) => {
           const freq = getWordFreq(`${p.title} ${p.abstract}`);
-          
-          // Calculate similarity to all "liked" papers
-          const likeScore = likes.length > 0 
-            ? Math.max(...likes.map(l => cosineSimilarity(freq, l)))
-            : 0.5;
-
-          // Calculate similarity to all "disliked" papers
-          const dislikeScore = dislikes.length > 0
-            ? Math.max(...dislikes.map(d => cosineSimilarity(freq, d)))
-            : 0;
+          const likeScore = likes.length > 0 ? Math.max(...likes.map(l => cosineSimilarity(freq, l))) : 0.5;
+          const dislikeScore = dislikes.length > 0 ? Math.max(...dislikes.map(d => cosineSimilarity(freq, d))) : 0;
 
           return {
             ...p,
             description: p.abstract,
             authors: (p.authors || []).map((a: any) => a.name),
-            score: likeScore - (dislikeScore * 0.5) // Penalty for matching dislikes
+            score: likeScore - (dislikeScore * 0.5)
           };
         })
         .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 15);
 
-      setRecommendations(candidates);
+      setRecommendations(candidates.reverse()); // Reverse so top score is at the end of array (top of stack)
     } catch (err) {
       console.error(err);
     } finally {
@@ -161,78 +155,80 @@ const DiscoverPage = () => {
   };
 
   useEffect(() => {
-    if (swipedIds.size >= 0) fetchRecommendations();
-  }, [swipedIds.size === 0]);
+    if (swipedIds.size >= 0 && stack.length === 0 && !isLoading) fetchRecommendations();
+  }, [stack.length]);
 
   return (
     <Page name="Discover">
       <div style={{ 
-        height: '100%', 
+        height: 'calc(100vh - 56px)', 
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center', 
         justifyContent: 'center',
         padding: '20px',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        background: 'var(--ion-background-color)'
       }}>
         
-        <div style={{ position: 'absolute', top: '20px', textAlign: 'center', zIndex: 10 }}>
-          <h1 style={{ fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ position: 'absolute', top: '24px', textAlign: 'center', zIndex: 10 }}>
+          <h1 style={{ fontWeight: 800, margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <IonIcon icon={sparklesOutline} color="secondary" />
             Scholar Discovery
           </h1>
-          <p style={{ color: 'var(--ion-color-step-600)', margin: '4px 0' }}>Swipe right to save, left to ignore</p>
+          <p style={{ color: 'var(--ion-color-step-600)', fontSize: '0.9rem', marginTop: '4px' }}>Building your research profile...</p>
         </div>
 
-        <div style={{ width: '100%', maxWidth: '400px', height: '550px', position: 'relative' }}>
+        <div style={{ width: '100%', maxWidth: '380px', height: '520px', position: 'relative', perspective: '1000px' }}>
           <AnimatePresence>
             {stack.length > 0 ? (
-              stack.map((paper, index) => (
-                <SwipeCard 
-                  key={paper.title} 
-                  paper={paper} 
-                  isTop={index === stack.length - 1} 
-                  onSwipe={(dir) => handleSwipe(paper, dir)}
-                />
-              ))
+              // Only render the top 2 cards for performance
+              stack.slice(-2).map((paper, index, arr) => {
+                const isTop = index === arr.length - 1;
+                return (
+                  <SwipeCard 
+                    key={paper.title} 
+                    paper={paper} 
+                    isTop={isTop} 
+                    onSwipe={(dir) => handleSwipe(paper, dir)}
+                  />
+                );
+              })
             ) : isLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <IonSpinner name="crescent" color="primary" />
-                <p>Training AI on your preferences...</p>
+                <p style={{ marginTop: '16px', color: 'var(--ion-color-step-500)' }}>Analyzing preferences...</p>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <IonIcon icon={refreshOutline} style={{ fontSize: '48px', color: 'var(--ion-color-step-300)' }} />
-                <h3>Out of papers!</h3>
-                <IonButton fill="clear" onClick={fetchRecommendations}>Fetch More</IonButton>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+                <IonIcon icon={refreshOutline} style={{ fontSize: '64px', color: 'var(--ion-color-step-300)', marginBottom: '16px' }} />
+                <h3>All caught up!</h3>
+                <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '20px' }}>We've processed this batch of research.</p>
+                <IonButton fill="outline" shape="round" onClick={fetchRecommendations}>Refresh Stack</IonButton>
               </div>
             )}
           </AnimatePresence>
         </div>
 
         {stack.length > 0 && (
-          <div style={{ display: 'flex', gap: '40px', marginTop: '30px', zIndex: 10 }}>
-            <div 
+          <div style={{ display: 'flex', gap: '32px', marginTop: '24px', zIndex: 10 }}>
+            <IonButton 
+              fill="solid" 
+              color="white"
+              style={{ '--border-radius': '50%', width: '64px', height: '64px', '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)' }}
               onClick={() => handleSwipe(stack[stack.length-1], 'left')}
-              style={{ 
-                width: '64px', height: '64px', borderRadius: '50%', background: 'white', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: '#ff4b2b', cursor: 'pointer'
-              }}
             >
-              <IonIcon icon={closeOutline} style={{ fontSize: '32px' }} />
-            </div>
-            <div 
+              <IonIcon icon={closeOutline} style={{ fontSize: '32px', color: '#ff4b2b' }} />
+            </IonButton>
+            <IonButton 
+              fill="solid" 
+              color="white"
+              style={{ '--border-radius': '50%', width: '64px', height: '64px', '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)' }}
               onClick={() => handleSwipe(stack[stack.length-1], 'right')}
-              style={{ 
-                width: '64px', height: '64px', borderRadius: '50%', background: 'white', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: '#00e676', cursor: 'pointer'
-              }}
             >
-              <IonIcon icon={checkmarkOutline} style={{ fontSize: '32px' }} />
-            </div>
+              <IonIcon icon={checkmarkOutline} style={{ fontSize: '32px', color: '#00e676' }} />
+            </IonButton>
           </div>
         )}
       </div>
@@ -242,14 +238,22 @@ const DiscoverPage = () => {
 
 const SwipeCard = ({ paper, isTop, onSwipe }: { paper: any, isTop: boolean, onSwipe: (dir: 'left' | 'right') => void }) => {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const rotate = useTransform(x, [-200, 200], [-20, 20]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
-  const colorRight = useTransform(x, [50, 150], ["rgba(0,230,118,0)", "rgba(0,230,118,0.2)"]);
-  const colorLeft = useTransform(x, [-150, -50], ["rgba(255,75,43,0.2)", "rgba(255,75,43,0)"]);
+  
+  // Visual indicators
+  const likeOpacity = useTransform(x, [50, 120], [0, 1]);
+  const nopeOpacity = useTransform(x, [-120, -50], [1, 0]);
 
-  const handleDragEnd = (event: any, info: any) => {
-    if (info.offset.x > 100) onSwipe('right');
-    else if (info.offset.x < -100) onSwipe('left');
+  const handleDragEnd = (_: any, info: any) => {
+    const threshold = 120;
+    const velocity = info.velocity.x;
+    
+    if (info.offset.x > threshold || velocity > 500) {
+      onSwipe('right');
+    } else if (info.offset.x < -threshold || velocity < -500) {
+      onSwipe('left');
+    }
   };
 
   return (
@@ -257,50 +261,81 @@ const SwipeCard = ({ paper, isTop, onSwipe }: { paper: any, isTop: boolean, onSw
       style={{ 
         position: 'absolute', width: '100%', height: '100%', x, rotate, opacity,
         cursor: isTop ? 'grab' : 'default',
-        zIndex: isTop ? 10 : 1
+        zIndex: isTop ? 10 : 1,
+        transformOrigin: 'bottom center'
       }}
       drag={isTop ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.8}
       onDragEnd={handleDragEnd}
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ x: x.get() < 0 ? -500 : 500, opacity: 0, transition: { duration: 0.3 } }}
+      initial={{ scale: 0.95, opacity: 0, y: 10 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ 
+        x: x.get() === 0 ? 0 : (x.get() > 0 ? 600 : -600), 
+        opacity: 0, 
+        scale: 0.5,
+        transition: { duration: 0.4, ease: "easeIn" } 
+      }}
     >
-      <motion.div style={{ 
-        width: '100%', height: '100%', background: 'white', borderRadius: '24px',
+      <div style={{ 
+        width: '100%', height: '100%', background: 'white', borderRadius: '28px',
         padding: '24px', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-        border: '1px solid var(--ion-border-color)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+        border: '1px solid rgba(0,0,0,0.05)',
         overflow: 'hidden',
         position: 'relative'
       }}>
-        {/* Swipe Overlays */}
-        <motion.div style={{ position: 'absolute', inset: 0, background: colorRight, pointerEvents: 'none' }} />
-        <motion.div style={{ position: 'absolute', inset: 0, background: colorLeft, pointerEvents: 'none' }} />
+        {/* Overlay Labels */}
+        <motion.div style={{ 
+          position: 'absolute', top: '40px', left: '20px', opacity: likeOpacity,
+          border: '4px solid #00e676', color: '#00e676', padding: '4px 12px',
+          borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '-15deg', zIndex: 20
+        }}>LIKE</motion.div>
+        
+        <motion.div style={{ 
+          position: 'absolute', top: '40px', right: '20px', opacity: nopeOpacity,
+          border: '4px solid #ff4b2b', color: '#ff4b2b', padding: '4px 12px',
+          borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '15deg', zIndex: 20
+        }}>NOPE</motion.div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <IonBadge color="secondary" style={{ marginBottom: '12px' }}>{paper.year}</IonBadge>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2, margin: '0 0 8px', color: '#1a1a1a' }}>{paper.title}</h2>
-          <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '16px', fontSize: '0.9rem' }}>{toList(paper.authors)}</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <IonBadge color="secondary" mode="ios">{paper.year}</IonBadge>
+            {paper.publication && (
+              <IonText color="medium" style={{ fontSize: '0.75rem', fontWeight: '600' }}>
+                {paper.publication.substring(0, 30)}
+              </IonText>
+            )}
+          </div>
           
-          <div style={{ height: '1px', background: '#eee', margin: '16px 0' }} />
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.25, margin: '0 0 10px', color: '#111' }}>
+            {paper.title}
+          </h2>
+          <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '16px', fontSize: '0.85rem' }}>
+            {toList(paper.authors)}
+          </p>
           
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#999', marginBottom: '8px' }}>Abstract</h3>
-          <p style={{ fontSize: '0.95rem', lineHeight: 1.6, color: '#444' }}>
+          <div style={{ height: '1px', background: 'rgba(0,0,0,0.05)', margin: '16px 0' }} />
+          
+          <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#aaa', marginBottom: '8px', letterSpacing: '0.05em' }}>Abstract</h3>
+          <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#333' }}>
             {paper.description || "No abstract available for this paper."}
           </p>
         </div>
 
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <IonText color="medium" style={{ fontSize: '0.8rem' }}>{paper.numCitations} Citations</IonText>
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f5f5f5', paddingTop: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <IonText color="medium" style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: '700' }}>Citations</IonText>
+            <IonText style={{ fontWeight: '800' }}>{paper.numCitations || 0}</IonText>
+          </div>
           {paper.url && (
             <IonButton fill="clear" size="small" href={paper.url} target="_blank" onClick={e => e.stopPropagation()}>
-              <IonIcon slot="start" icon={openOutline} />
-              Details
+              <IonIcon slot="end" icon={openOutline} />
+              Read
             </IonButton>
           )}
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };
