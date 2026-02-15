@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import { collection, LibraryCollection, writeBatch, firestore, storage, ref, uploadBytes, getDownloadURL } from "./firebase";
+import { collection, LibraryCollection, writeBatch, firestore } from "./firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useUser } from "./user";
 import { findPaperUrl } from "./scholar";
@@ -226,23 +226,6 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       .catch(err => console.error("Error updating document: ", err));
   };
 
-  const uploadPDF = async (bid: string, file: File) => {
-    if (!user || !bid) return;
-    
-    try {
-      const storageRef = ref(storage, `users/${user.uid}/pdfs/${bid}.pdf`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      // Update the book document with the new PDF URL
-      update(bid, { pdf: downloadURL });
-      return downloadURL;
-    } catch (err) {
-      console.error("Error uploading PDF: ", err);
-      throw err;
-    }
-  };
-
   const clearReadingList = () => {
     if (!user) return;
     
@@ -287,7 +270,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   return (
-    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag, clearReadingList, uploadPDF]}>
+    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag, clearReadingList]}>
       {children}
     </LibraryContext.Provider>
   );
