@@ -97,6 +97,7 @@ const DiscoverPage = () => {
   };
 
   const fetchRecommendations = async () => {
+    if (!auth.currentUser) return;
     setIsLoading(true);
     try {
       // 1. Get user profile (liked vs disliked)
@@ -115,7 +116,7 @@ const DiscoverPage = () => {
       // 2. Determine "Seed" topics from likes or library
       const topics = likes.length > 0 
         ? Object.keys(likes[0]).slice(0, 2)
-        : library.flatMap(b => b.keywords || []).slice(0, 2);
+        : library.flatMap((b: any) => b.keywords || []).slice(0, 2);
       
       const queryStr = topics.length > 0 ? topics.join(" ") : "latest academic research";
 
