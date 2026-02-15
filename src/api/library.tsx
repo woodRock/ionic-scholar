@@ -296,7 +296,7 @@ export type Book = {
   urlVersionsList?: string;
   publication?: string;
   keywords?: string[];
-  quotes?: string[];
+  notes?: string;
   rating?: number;
   inReadingList?: boolean;
 };

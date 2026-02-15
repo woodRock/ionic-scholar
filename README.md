@@ -4,7 +4,7 @@
 
 ## Overview
 
-This **individually** developed app keeps track of academic references. The app remembers the users _progress_, _keywords_, _quotes_. Also it can generate _citations_. We design the app to reduce the stress of academic writing. Frequently it can be problematic to maintain track of several numerous scholarly articles when trying to prepare a paper.
+This **individually** developed app keeps track of academic references. The app remembers the users _progress_, _keywords_, _markdown notes_. Also it can generate _citations_. We design the app to reduce the stress of academic writing. Frequently it can be problematic to maintain track of several numerous scholarly articles when trying to prepare a paper.
 
 ## Features
 
@@ -12,13 +12,13 @@ This **individually** developed app keeps track of academic references. The app 
 - _Sign In_ - the user signs in to the application using Email or Google authentication (3 hours)
 - _Search_ - a search engine which can query the Google Scholar database for scholarly articles (4 hours)
 - _Library_ - a collection of the scholarly articles the user has saved
-- _View Paper_ - displays a summary of the meta-data for a paper (title, author, year, etc), additionally includes (if any exist) their quotations, keywords and progress, with an ability to generate a citation (2 hours)
-- _Edit Paper_ - allows them to remove a paper from their library. CRUD (create/remove / update/delete) (if any exist) their quotations, keywords and progress (3 hours)
+- _View Paper_ - displays a summary of the meta-data for a paper (title, author, year, etc), additionally includes (if any exist) their markdown notes, keywords and progress, with an ability to generate a citation (2 hours)
+- _Edit Paper_ - allows them to remove a paper from their library. CRUD (create/remove / update/delete) (if any exist) their markdown notes, keywords and progress (3 hours)
 
 ## External Library
 
 1. [Google Scholar API](https://www.npmjs.com/package/scholarly) to query the scholary articles and generate a variety of citations types for a given paper (or book, website, etc...). (Note: different library to app description)
-2. [Firestore](https://firebase.google.com/docs/firestore) to store the user's scholary articles, including Google Scholar ID, and their keywords, quotes and progress
+2. [Firestore](https://firebase.google.com/docs/firestore) to store the user's scholary articles, including Google Scholar ID, and their keywords, markdown notes and progress
 3. [Firebase Authentication](https://firebase.google.com/docs/auth) allows for 3rd party Email/Google Authentication. As a result we can use the application across multiple devices.
 
 ## Citations

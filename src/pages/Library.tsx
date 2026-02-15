@@ -24,7 +24,7 @@ import PDFReader from "../components/PDFReader";
 
 /**
  * The library is a collection of citations the user has bookmarked.
- * They can add keywords, quotes and track progress through their libraries contents.
+ * They can add keywords, markdown notes and track progress through their libraries contents.
  */
 const LibraryPage = () => {
   const props = { name: "Library" };
@@ -85,13 +85,12 @@ const Library = () => {
       const searchLower = searchText.toLowerCase();
       
       // Deep Search Indexing
-      const matchesSearch = 
-        book.title.toLowerCase().includes(searchLower) ||
-        book.authors.join(" ").toLowerCase().includes(searchLower) ||
-        (book.description || "").toLowerCase().includes(searchLower) ||
-        (book.quotes || []).some((q: string) => q.toLowerCase().includes(searchLower));
-      
-      const matchesTags = 
+          const matchesSearch =
+            book.title.toLowerCase().includes(searchLower) ||
+            book.authors.join(" ").toLowerCase().includes(searchLower) ||
+            (book.description || "").toLowerCase().includes(searchLower) ||
+            (book.notes || "").toLowerCase().includes(searchLower);
+            const matchesTags = 
         selectedTags.length === 0 || 
         selectedTags.every(tag => 
           (book.keywords || []).some((k: string) => k.toLowerCase() === tag.toLowerCase())

@@ -18,7 +18,7 @@ import {toList} from "../api/scholar";
 import Page from "../components/Page";
 import Citations from "../components/Citations";
 import Keywords from "../components/Keywords";
-import Quotes from "../components/Quotes";
+import Notes from "../components/Notes";
 import Progress from "../components/Progress";
 import PDFReader from "../components/PDFReader";
 
@@ -152,10 +152,10 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
         <IonCard style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--ion-border-color)', borderRadius: '16px' }}>
           <IonCardHeader>
-            <IonCardTitle style={{ fontSize: '1.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Quotes</IonCardTitle>
+            <IonCardTitle style={{ fontSize: '1.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <Quotes book={book} bid={bid} />
+            <Notes book={book} bid={bid} />
           </IonCardContent>
         </IonCard>
       </div>

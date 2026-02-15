@@ -73,18 +73,18 @@ const PDFReader: React.FC<PDFReaderProps> = ({ isOpen, onClose, url, book, bid }
   const captureSelection = () => {
     const selection = window.getSelection()?.toString();
     if (selection && selection.trim().length > 0) {
-      const existingQuotes = book.quotes || [];
-      if (!existingQuotes.includes(selection.trim())) {
-        update(bid, { 
-          quotes: [...existingQuotes, selection.trim()] 
-        });
-        present({
-          message: "Quote saved to library!",
-          duration: 2000,
-          color: "success",
-          position: "top"
-        });
-      }
+      const existingNotes = book.notes || "";
+      const newNotes = existingNotes 
+        ? `${existingNotes}\n\n> ${selection.trim()}`
+        : `> ${selection.trim()}`;
+      
+      update(bid, { notes: newNotes });
+      present({
+        message: "Selection appended to notes!",
+        duration: 2000,
+        color: "success",
+        position: "top"
+      });
     }
   };
 
