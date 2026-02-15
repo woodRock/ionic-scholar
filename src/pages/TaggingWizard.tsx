@@ -31,10 +31,15 @@ const TaggingWizard: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [customTag, setCustomTag] = useState("");
 
-  const currentBook = library[currentIndex];
-  const progress = library.length > 0 ? (currentIndex + 1) / library.length : 0;
+  // Filter library for papers that have no tags
+  const untaggedPapers = useMemo(() => {
+    return library.filter((b: any) => !b.keywords || b.keywords.length === 0);
+  }, [library]);
 
-  // Academic dictionary for automated suggestions
+  const currentBook = untaggedPapers[currentIndex];
+  const progress = untaggedPapers.length > 0 ? (currentIndex + 1) / untaggedPapers.length : 0;
+
+  // ... (dictionary remains the same)
   const dictionary = [
     "Machine Learning", "Deep Learning", "CNN", "RNN", "Transformer", "NLP", 
     "Computer Vision", "Mass Spectrometry", "REIMS", "iKnife", "Fish", 
@@ -80,7 +85,7 @@ const TaggingWizard: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentIndex < library.length - 1) {
+    if (currentIndex < untaggedPapers.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -101,6 +106,21 @@ const TaggingWizard: React.FC = () => {
     );
   }
 
+  if (untaggedPapers.length === 0) {
+    return (
+      <Page name="Tagging Wizard">
+        <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+          <IonIcon icon={checkmarkCircleOutline} color="success" style={{ fontSize: '64px', marginBottom: '16px' }} />
+          <h2>All Caught Up!</h2>
+          <p style={{ color: 'var(--ion-color-step-600)' }}>Every paper in your library has at least one tag.</p>
+          <IonButton fill="outline" shape="round" routerLink="/page/Library" style={{ marginTop: '24px' }}>
+            Return to Library
+          </IonButton>
+        </div>
+      </Page>
+    );
+  }
+
   return (
     <Page name="Tagging Wizard">
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
@@ -109,7 +129,7 @@ const TaggingWizard: React.FC = () => {
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <IonLabel color="primary" style={{ fontWeight: 'bold' }}>
-              Paper {currentIndex + 1} of {library.length}
+              Paper {currentIndex + 1} of {untaggedPapers.length}
             </IonLabel>
             <IonLabel color="medium">{Math.round(progress * 100)}% Complete</IonLabel>
           </div>
@@ -187,7 +207,7 @@ const TaggingWizard: React.FC = () => {
                 <IonIcon slot="start" icon={chevronBackOutline} />
                 Previous
               </IonButton>
-              <IonButton fill="solid" onClick={handleNext} disabled={currentIndex === library.length - 1}>
+              <IonButton fill="solid" onClick={handleNext} disabled={currentIndex === untaggedPapers.length - 1}>
                 Save & Next
                 <IonIcon slot="end" icon={chevronForwardOutline} />
               </IonButton>

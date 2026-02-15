@@ -32,14 +32,14 @@ import { getAnalytics } from "firebase/analytics";
 // In a production version we would hide these firebase API keys
 // Especially if the code was hosted on a public repository
 const firebaseConfig = {
-  apiKey: "AIzaSyAdLiVMSFfBcTNxPw48V9cEsq-fA8XvIDc",
-  authDomain: "scholar-e5753.firebaseapp.com",
-  databaseURL: "https://scholar-e5753.firebaseio.com",
-  projectId: "scholar-e5753",
-  storageBucket: "scholar-e5753.appspot.com",
-  messagingSenderId: "289588095416",
-  appId: "1:289588095416:web:bb273d746f68f82775474d",
-  measurementId: "G-NESTJ3Z9VR"
+  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY,
+  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: (import.meta as any).env.VITE_FIREBASE_DATABASE_URL,
+  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID,
+  measurementId: (import.meta as any).env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Type definition for user data

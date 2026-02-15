@@ -4,7 +4,6 @@ import {
   IonText,
   IonBadge,
   useIonToast,
-  IonSpinner
 } from "@ionic/react";
 import React, { useEffect, useState } from "react";
 import { 
@@ -14,11 +13,12 @@ import {
   star,
   starOutline
 } from "ionicons/icons";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Page from "../components/Page";
-import { useLibrary, Book } from "../api/library";
+import { useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
 import PDFReader from "../components/PDFReader";
+import SwipeCard from "../components/SwipeCard";
 
 const ReadPage = () => {
   const [library, , , , , update] = useLibrary();
@@ -88,13 +88,15 @@ const ReadPage = () => {
                 if (!paper.title) return null;
                 const isTop = index === arr.length - 1;
                 return (
-                  <ReadSwipeCard 
+                  <SwipeCard 
                     key={paper.bid} 
-                    paper={paper} 
+                    item={paper} 
                     isTop={isTop}
-                    index={index}
-                    totalInStack={arr.length}
                     onSwipe={(dir) => handleSwipe(paper, dir)}
+                    rightLabel="ADD"
+                    leftLabel="SKIP"
+                    badgeColor="primary"
+                    showRating={true}
                     onRate={(r) => setRating(paper, r)}
                   />
                 );
@@ -146,99 +148,6 @@ const ReadPage = () => {
         )}
       </div>
     </Page>
-  );
-};
-
-const ReadSwipeCard = ({ paper, isTop, index, totalInStack, onSwipe, onRate }: { paper: any, isTop: boolean, index: number, totalInStack: number, onSwipe: (dir: 'left' | 'right') => void, onRate: (r: number) => void }) => {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
-  
-  const addOpacity = useTransform(x, [50, 120], [0, 1]);
-  const skipOpacity = useTransform(x, [-120, -50], [1, 0]);
-
-  const scale = isTop ? 1 : 1 - (totalInStack - 1 - index) * 0.05;
-  const yOffset = isTop ? 0 : (totalInStack - 1 - index) * 15;
-
-  const handleDragEnd = (_: any, info: any) => {
-    const threshold = 100;
-    const velocity = info.velocity.x;
-    
-    if (info.offset.x > threshold || velocity > 400) {
-      onSwipe('right');
-    } else if (info.offset.x < -threshold || velocity < -400) {
-      onSwipe('left');
-    }
-  };
-
-  return (
-    <motion.div
-      style={{ 
-        position: 'absolute', width: '100%', height: '520px', x, rotate, opacity,
-        cursor: isTop ? 'grab' : 'default',
-        zIndex: isTop ? 10 : index,
-        transformOrigin: 'bottom center',
-        y: yOffset
-      }}
-      drag={isTop ? "x" : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.7}
-      onDragEnd={handleDragEnd}
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale, opacity: 1 }}
-      exit={{ 
-        x: x.get() > 0 ? 800 : (x.get() < 0 ? -800 : (Math.random() > 0.5 ? 800 : -800)), 
-        opacity: 0, 
-        scale: 0.5,
-        rotate: x.get() > 0 ? 45 : -45,
-        transition: { duration: 0.4 } 
-      }}
-      whileTap={isTop ? { scale: 1.02 } : {}}
-    >
-      <div style={{ 
-        width: '100%', height: '100%', background: 'white', borderRadius: '28px',
-        padding: '24px', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        <motion.div style={{ position: 'absolute', top: '40px', left: '20px', opacity: addOpacity, border: '4px solid #00e676', color: '#00e676', padding: '4px 12px', borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '-15deg', zIndex: 20 }}>ADD</motion.div>
-        <motion.div style={{ position: 'absolute', top: '40px', right: '20px', opacity: skipOpacity, border: '4px solid #ff4b2b', color: '#ff4b2b', padding: '4px 12px', borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '15deg', zIndex: 20 }}>SKIP</motion.div>
-
-        <div style={{ flex: 1, overflowY: 'auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <IonBadge color="primary" mode="ios" style={{ marginBottom: '16px', padding: '6px 16px' }}>
-            {Math.round(((paper.progress?.current || 0) / (paper.progress?.total || 1)) * 100)}% READ
-          </IonBadge>
-          
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, lineHeight: 1.3, margin: '0 0 12px', color: '#111' }}>
-            {paper.title}
-          </h2>
-          
-          <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '20px', fontSize: '0.95rem', fontWeight: '500' }}>
-            {toList(paper.authors)}
-          </p>
-          
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '24px' }}>
-            {[1, 2, 3, 4, 5].map(r => (
-              <IonIcon 
-                key={r} 
-                icon={r <= (paper.rating || 0) ? star : starOutline} 
-                color="warning" 
-                onClick={(e) => { e.stopPropagation(); onRate(r); }}
-                style={{ fontSize: '1.5rem', cursor: 'pointer' }}
-              />
-            ))}
-          </div>
-
-          <div style={{ width: '40px', height: '2px', background: 'var(--ion-color-primary)', marginBottom: '24px', opacity: 0.3 }} />
-          
-          <p style={{ fontSize: '0.95rem', lineHeight: 1.7, color: '#444', textAlign: 'justify' }}>
-            {paper.description}
-          </p>
-        </div>
-      </div>
-    </motion.div>
   );
 };
 

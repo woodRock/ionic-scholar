@@ -41,9 +41,10 @@ const LibraryPage = () => {
  * The library is reloaded to reflect those changes.
  */
 const Library = () => {
-  const [library, , , , clear, , pinnedTags, togglePinned] = useLibrary();
+  const [library, , , , clear, , pinnedTags, togglePinned, clearReadingList] = useLibrary();
   const navigate = useNavigate();
   const [showAlert, setShowAlert] = useState(false);
+  const [showClearListAlert, setShowClearListAlert] = useState(false);
   
   // Search and Filter State
   const [searchText, setSearchText] = useState("");
@@ -141,6 +142,12 @@ const Library = () => {
             <IonIcon slot="start" icon={bookOutline} />
             Reading List {library.filter((b: any) => b.inReadingList).length > 0 && `(${library.filter((b: any) => b.inReadingList).length})`}
           </IonButton>
+          {showReadingListOnly && library.some((b: any) => b.inReadingList) && (
+            <IonButton fill="clear" color="danger" size="small" onClick={() => setShowClearListAlert(true)}>
+              <IonIcon slot="start" icon={trashOutline} />
+              Clear List
+            </IonButton>
+          )}
         </div>
         {library.length > 0 && (
           <IonButton 
@@ -223,6 +230,21 @@ const Library = () => {
           </div>
         )}
       </div>
+
+      <IonAlert
+        isOpen={showClearListAlert}
+        onDidDismiss={() => setShowClearListAlert(false)}
+        header="Clear Reading List?"
+        message="This will remove all papers from your reading list, but they will stay in your library."
+        buttons={[
+          { text: 'Cancel', role: 'cancel' },
+          { 
+            text: 'Clear', 
+            role: 'destructive',
+            handler: () => clearReadingList()
+          }
+        ]}
+      />
 
       <IonAlert
         isOpen={showAlert}

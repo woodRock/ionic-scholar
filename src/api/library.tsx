@@ -224,6 +224,28 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       .catch(err => console.error("Error updating document: ", err));
   };
 
+  const clearReadingList = () => {
+    if (!user) return;
+    
+    collection(user.uid)
+      .get()
+      .then((querySnapshot: any) => {
+        const batch = writeBatch(firestore);
+        let count = 0;
+        querySnapshot.docs.forEach((d: any) => {
+          if (d.data().inReadingList) {
+            const docRef = doc(firestore, `users/${user.uid}/library/${d.id}`);
+            batch.set(docRef, { inReadingList: false }, { merge: true });
+            count++;
+          }
+        });
+        if (count > 0) return batch.commit();
+      })
+      .catch((err: any) => {
+        console.error("Error clearing reading list: ", err);
+      });
+  };
+
   const clear = () => {
     if (!user) return;
     
@@ -246,7 +268,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   return (
-    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag]}>
+    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag, clearReadingList]}>
       {children}
     </LibraryContext.Provider>
   );

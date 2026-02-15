@@ -5,29 +5,21 @@ import {
   IonText,
   IonBadge,
   useIonToast,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonButtons,
-  IonMenuButton
 } from "@ionic/react";
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   sparklesOutline, 
   closeOutline, 
   checkmarkOutline, 
   refreshOutline, 
-  bookOutline, 
-  openOutline,
-  trashOutline
 } from "ionicons/icons";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import Page from "../components/Page";
-import { useLibrary, Book } from "../api/library";
+import { useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
-import { doc, getDoc, setDoc, collection, query, getDocs, limit, orderBy } from "firebase/firestore";
+import { doc, setDoc, collection, query, getDocs, limit, orderBy } from "firebase/firestore";
 import { firestore, auth } from "../api/firebase";
+import SwipeCard from "../components/SwipeCard";
 
 // --- Vector Math Helpers for simple KNN ---
 
@@ -208,7 +200,7 @@ const DiscoverPage = () => {
                 return (
                   <SwipeCard 
                     key={paper.title} 
-                    paper={paper} 
+                    item={paper} 
                     isTop={isTop} 
                     onSwipe={(dir) => handleSwipe(paper, dir)}
                   />
@@ -252,110 +244,6 @@ const DiscoverPage = () => {
         )}
       </div>
     </Page>
-  );
-};
-
-const SwipeCard = ({ paper, isTop, onSwipe }: { paper: any, isTop: boolean, onSwipe: (dir: 'left' | 'right') => void }) => {
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-20, 20]);
-  const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
-  
-  // Visual indicators
-  const likeOpacity = useTransform(x, [50, 120], [0, 1]);
-  const nopeOpacity = useTransform(x, [-120, -50], [1, 0]);
-
-  const handleDragEnd = (_: any, info: any) => {
-    const threshold = 120;
-    const velocity = info.velocity.x;
-    
-    if (info.offset.x > threshold || velocity > 500) {
-      onSwipe('right');
-    } else if (info.offset.x < -threshold || velocity < -500) {
-      onSwipe('left');
-    }
-  };
-
-  return (
-    <motion.div
-      style={{ 
-        position: 'absolute', width: '100%', height: '100%', x, rotate, opacity,
-        cursor: isTop ? 'grab' : 'default',
-        zIndex: isTop ? 10 : 1,
-        transformOrigin: 'bottom center'
-      }}
-      drag={isTop ? "x" : false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.8}
-      onDragEnd={handleDragEnd}
-      initial={{ scale: 0.95, opacity: 0, y: 10 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
-      exit={{ 
-        x: x.get() === 0 ? 0 : (x.get() > 0 ? 600 : -600), 
-        opacity: 0, 
-        scale: 0.5,
-        transition: { duration: 0.4, ease: "easeIn" } 
-      }}
-    >
-      <div style={{ 
-        width: '100%', height: '100%', background: 'white', borderRadius: '28px',
-        padding: '24px', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        {/* Overlay Labels */}
-        <motion.div style={{ 
-          position: 'absolute', top: '40px', left: '20px', opacity: likeOpacity,
-          border: '4px solid #00e676', color: '#00e676', padding: '4px 12px',
-          borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '-15deg', zIndex: 20
-        }}>LIKE</motion.div>
-        
-        <motion.div style={{ 
-          position: 'absolute', top: '40px', right: '20px', opacity: nopeOpacity,
-          border: '4px solid #ff4b2b', color: '#ff4b2b', padding: '4px 12px',
-          borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '15deg', zIndex: 20
-        }}>NOPE</motion.div>
-
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <IonBadge color="secondary" mode="ios">{paper.year}</IonBadge>
-            {paper.publication && (
-              <IonText color="medium" style={{ fontSize: '0.75rem', fontWeight: '600' }}>
-                {paper.publication.substring(0, 30)}
-              </IonText>
-            )}
-          </div>
-          
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.25, margin: '0 0 10px', color: '#111' }}>
-            {paper.title}
-          </h2>
-          <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '16px', fontSize: '0.85rem' }}>
-            {toList(paper.authors)}
-          </p>
-          
-          <div style={{ height: '1px', background: 'rgba(0,0,0,0.05)', margin: '16px 0' }} />
-          
-          <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#aaa', marginBottom: '8px', letterSpacing: '0.05em' }}>Abstract</h3>
-          <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: '#333' }}>
-            {paper.description || "No abstract available for this paper."}
-          </p>
-        </div>
-
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f5f5f5', paddingTop: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <IonText color="medium" style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: '700' }}>Citations</IonText>
-            <IonText style={{ fontWeight: '800' }}>{paper.numCitations || 0}</IonText>
-          </div>
-          {paper.url && (
-            <IonButton fill="clear" size="small" href={paper.url} target="_blank" onClick={e => e.stopPropagation()}>
-              <IonIcon slot="end" icon={openOutline} />
-              Read
-            </IonButton>
-          )}
-        </div>
-      </div>
-    </motion.div>
   );
 };
 
