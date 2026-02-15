@@ -175,29 +175,35 @@ const Library = () => {
 
         {(pinned.length > 0 || others.length > 0) && (
           <div style={{ marginTop: '16px' }}>
-            <IonLabel style={{ display: 'block', fontWeight: '600', fontSize: '0.75rem', color: 'var(--ion-color-step-500)', marginBottom: '8px', letterSpacing: '0.05em' }}>
-              FILTER BY TAG (Double-click to pin):
-            </IonLabel>
-            
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+              {pinned.length > 0 && (
+                <IonLabel style={{ width: '100%', fontWeight: '600', fontSize: '0.7rem', color: 'var(--ion-color-step-500)', marginBottom: '4px', letterSpacing: '0.05em' }}>
+                  FAVOURITE TAGS:
+                </IonLabel>
+              )}
               {pinned.map(tag => renderTagChip(tag, true))}
               
-              {others.length > 0 && !showAllTags && pinned.length > 0 && (
-                <div style={{ width: '100%', height: '1px', background: 'var(--ion-border-color)', margin: '8px 0' }} />
+              {showAllTags && (
+                <>
+                  <IonLabel style={{ width: '100%', fontWeight: '600', fontSize: '0.7rem', color: 'var(--ion-color-step-500)', marginTop: '12px', marginBottom: '4px', letterSpacing: '0.05em' }}>
+                    ALL TAGS:
+                  </IonLabel>
+                  {others.map(tag => renderTagChip(tag, false))}
+                </>
               )}
-
-              {(showAllTags || pinned.length === 0) && others.map(tag => renderTagChip(tag, false))}
               
               {others.length > 0 && (
-                <IonButton 
-                  fill="clear" 
-                  size="small" 
-                  onClick={() => setShowAllTags(!showAllTags)}
-                  style={{ fontSize: '0.75rem', '--padding-start': '4px' }}
-                >
-                  <IonIcon slot="end" icon={showAllTags ? chevronUp : chevronDown} />
-                  {showAllTags ? "Hide rare tags" : (pinned.length > 0 ? `Show ${others.length} more...` : "Show all tags")}
-                </IonButton>
+                <div style={{ width: '100%', marginTop: '4px' }}>
+                  <IonButton 
+                    fill="clear" 
+                    size="small" 
+                    onClick={() => setShowAllTags(!showAllTags)}
+                    style={{ fontSize: '0.75rem', '--padding-start': '0' }}
+                  >
+                    <IonIcon slot="end" icon={showAllTags ? chevronUp : chevronDown} />
+                    {showAllTags ? "Hide tags" : (pinned.length > 0 ? `Show ${others.length} more...` : "Show all tags")}
+                  </IonButton>
+                </div>
               )}
             </div>
           </div>
