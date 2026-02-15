@@ -8,6 +8,13 @@ import { firestore, auth } from "./firebase";
  * We use a hybrid approach to ensure stability in 2026.
  */
 
+export interface SearchOptions {
+  year?: string;
+  minCitations?: number;
+  venue?: string;
+  sort?: string;
+}
+
 const isNotEmpty = (query: string): boolean => {
   return query.trim() !== "";
 };
@@ -67,7 +74,7 @@ export const cite = (book: Book): string => {
  * Modern Search implementation using Semantic Scholar API (Stable & Free)
  * This avoids the 'Error 409' blocks common with Google Scholar scraping.
  */
-const semanticScholarSearch = async (query: string): Promise<Book[]> => {
+const semanticScholarSearch = async (query: string, options: SearchOptions = {}): Promise<Book[]> => {
   try {
     const headers: Record<string, string> = {};
     
@@ -81,12 +88,19 @@ const semanticScholarSearch = async (query: string): Promise<Book[]> => {
       } catch (e) { /* silent fail */ }
     }
 
-    const response = await fetch(
-      `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(
-        query
-      )}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue`,
-      { headers }
-    );
+    let url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue`;
+    
+    if (options.year) {
+      url += `&year=${encodeURIComponent(options.year)}`;
+    }
+    if (options.venue) {
+      url += `&venue=${encodeURIComponent(options.venue)}`;
+    }
+    if (options.sort) {
+      url += `&sort=${encodeURIComponent(options.sort)}`;
+    }
+
+    const response = await fetch(url, { headers });
     
     if (response.status === 429) {
       throw new Error("RATE_LIMIT");
@@ -96,15 +110,21 @@ const semanticScholarSearch = async (query: string): Promise<Book[]> => {
     
     const data = await response.json();
     
-    return (data.data || []).map((paper: any) => ({
+    let results = (data.data || []).map((paper: any) => ({
       title: paper.title,
       year: paper.year || new Date().getFullYear(),
       authors: paper.authors?.map((a: any) => a.name) || ["Unknown Author"],
       url: paper.url,
-      numCitations: paper.citationCount,
+      numCitations: paper.citationCount || 0,
       description: paper.abstract,
       publication: paper.venue
     }));
+
+    if (options.minCitations) {
+      results = results.filter((r: Book) => (r.numCitations || 0) >= (options.minCitations || 0));
+    }
+
+    return results;
   } catch (error) {
     if ((error as Error).message === "RATE_LIMIT") throw error;
     console.error("Semantic Scholar failed, falling back...", error);
@@ -116,11 +136,39 @@ const semanticScholarSearch = async (query: string): Promise<Book[]> => {
  * OpenAlex Search implementation (Free, High Rate Limits, No API Key needed)
  * This is a massive database of academic works and serves as a robust secondary.
  */
-const openAlexSearch = async (query: string): Promise<Book[]> => {
+const openAlexSearch = async (query: string, options: SearchOptions = {}): Promise<Book[]> => {
   try {
-    const response = await fetch(
-      `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per_page=10`
-    );
+    let url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per_page=10`;
+    
+    const filters = [];
+    if (options.year) {
+      // OpenAlex year filter can be a single year or range like 2020-2022
+      if (options.year.includes("-")) {
+        const [start, end] = options.year.split("-");
+        if (start) filters.push(`publication_year:>${parseInt(start) - 1}`);
+        if (end) filters.push(`publication_year:<${parseInt(end) + 1}`);
+      } else {
+        filters.push(`publication_year:${options.year}`);
+      }
+    }
+    if (options.minCitations) {
+      filters.push(`cited_by_count:>${options.minCitations - 1}`);
+    }
+    
+    if (filters.length > 0) {
+      url += `&filter=${encodeURIComponent(filters.join(","))}`;
+    }
+    
+    if (options.sort) {
+      // Map Semantic Scholar sort names to OpenAlex sort names if necessary
+      let openAlexSort = options.sort;
+      if (options.sort === "citationCount:desc") openAlexSort = "cited_by_count:desc";
+      if (options.sort === "year:desc") openAlexSort = "publication_year:desc";
+      
+      url += `&sort=${encodeURIComponent(openAlexSort)}`;
+    }
+
+    const response = await fetch(url);
     
     if (!response.ok) throw new Error("OpenAlex request failed");
     
@@ -144,15 +192,15 @@ const openAlexSearch = async (query: string): Promise<Book[]> => {
 /**
  * Main search function with resilient multi-provider fallback logic
  */
-const scholar = async (query: string): Promise<Book[]> => {
+const scholar = async (query: string, options: SearchOptions = {}): Promise<Book[]> => {
   if (!isNotEmpty(query)) return [];
 
   // 1. Try Semantic Scholar (Preferred for Rich Data)
-  let results = await semanticScholarSearch(query);
+  let results = await semanticScholarSearch(query, options);
   if (results.length > 0) return results;
 
   // 2. Try OpenAlex (Robust fallback, high rate limits)
-  results = await openAlexSearch(query);
+  results = await openAlexSearch(query, options);
   if (results.length > 0) return results;
 
   // 3. Last resort: Original scraper (Note: frequently breaks due to Google changes)
