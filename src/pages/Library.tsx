@@ -10,15 +10,17 @@ import {
   IonAlert,
   IonSearchbar,
   IonChip,
+  IonBadge,
 } from "@ionic/react";
 import React, { useState, useMemo } from "react";
-import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp, star } from "ionicons/icons";
+import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp, star, bookOutline, closeOutline } from "ionicons/icons";
 import { v4 } from "uuid";
 import { useNavigate, Link } from "react-router-dom";
 import Page from "../components/Page";
 import { useLibrary } from "../api/library";
 import { toList } from "../api/scholar";
 import BibTeXActions from "../components/BibTeXActions";
+import PDFReader from "../components/PDFReader";
 
 /**
  * The library is a collection of citations the user has bookmarked.
@@ -49,6 +51,7 @@ const Library = () => {
   const [sortBy, setSortBy] = useState<"year" | "title">("year");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllTags, setShowAllTags] = useState(false);
+  const [showReadingListOnly, setShowReadingListOnly] = useState(false);
 
   // Group tags into Pinned vs Others, both sorted alphabetically
   const { pinned, others } = useMemo(() => {
@@ -88,7 +91,9 @@ const Library = () => {
           (book.keywords || []).some((k: string) => k.toLowerCase() === tag.toLowerCase())
         );
 
-      return matchesSearch && matchesTags;
+      const matchesReadingList = !showReadingListOnly || book.inReadingList;
+
+      return matchesSearch && matchesTags && matchesReadingList;
     })
     .sort((a: any, b: any) => {
       let comparison = 0;
@@ -127,6 +132,15 @@ const Library = () => {
               Tagging Wizard
             </IonButton>
           )}
+          <IonButton 
+            fill={showReadingListOnly ? "solid" : "outline"} 
+            size="small" 
+            color="primary" 
+            onClick={() => setShowReadingListOnly(!showReadingListOnly)}
+          >
+            <IonIcon slot="start" icon={bookOutline} />
+            Reading List {library.filter((b: any) => b.inReadingList).length > 0 && `(${library.filter((b: any) => b.inReadingList).length})`}
+          </IonButton>
         </div>
         {library.length > 0 && (
           <IonButton 
@@ -257,37 +271,84 @@ const Library = () => {
 
 const BookCard = (book: any) => {
   const navigate = useNavigate();
-  const [, , , remove] = useLibrary();
-  const { title, authors, year } = book;
+  const [, , , remove, , update] = useLibrary();
+  const [readerOpen, setReaderOpen] = useState(false);
+  const { title, authors, year, url, inReadingList } = book;
   
   return (
-    <IonCard 
-      onClick={() => navigate("/page/Book/" + encodeURIComponent(title))}
-      style={{ margin: 0, cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
-    >
-      <IonCardHeader>
-        <IonCardSubtitle style={{ color: 'var(--ion-color-secondary)' }}>{year}</IonCardSubtitle>
-        <IonCardTitle style={{ fontSize: '1.1rem', fontWeight: '700', lineHeight: '1.2' }}>{title}</IonCardTitle>
-      </IonCardHeader>
-      
-      <IonCardContent style={{ flex: 1 }}>
-        <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>{toList(authors)}</IonLabel>
-      </IonCardContent>
+    <>
+      <IonCard 
+        onClick={() => navigate("/page/Book/" + encodeURIComponent(title))}
+        style={{ margin: 0, cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
+      >
+        <IonCardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <IonCardSubtitle style={{ color: 'var(--ion-color-secondary)' }}>{year}</IonCardSubtitle>
+            {inReadingList && <IonBadge color="primary" style={{ fontSize: '0.6rem' }}>LIST</IonBadge>}
+          </div>
+          <IonCardTitle style={{ fontSize: '1.1rem', fontWeight: '700', lineHeight: '1.2' }}>{title}</IonCardTitle>
+        </IonCardHeader>
+        
+        <IonCardContent style={{ flex: 1 }}>
+          <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>{toList(authors)}</IonLabel>
+        </IonCardContent>
 
-      <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--ion-border-color, #eee)' }}>
-        <IonButton 
-          fill="clear" 
-          color="danger" 
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            remove(title);
-          }}
-        >
-          <IonIcon slot="icon-only" icon={trashOutline} />
-        </IonButton>
-      </div>
-    </IonCard>
+        <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ion-border-color, #eee)', alignItems: 'center' }}>
+          <div>
+            {url && (
+              <IonButton 
+                fill="clear" 
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReaderOpen(true);
+                }}
+              >
+                <IonIcon slot="start" icon={bookOutline} />
+                Read
+              </IonButton>
+            )}
+          </div>
+          <div style={{ display: 'flex' }}>
+            {inReadingList && (
+              <IonButton 
+                fill="clear" 
+                color="medium" 
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  update(book.bid, { inReadingList: false });
+                }}
+                title="Remove from Reading List"
+              >
+                <IonIcon slot="icon-only" icon={closeOutline} />
+              </IonButton>
+            )}
+            <IonButton 
+              fill="clear" 
+              color="danger" 
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                remove(title);
+              }}
+            >
+              <IonIcon slot="icon-only" icon={trashOutline} />
+            </IonButton>
+          </div>
+        </div>
+      </IonCard>
+
+      {url && (
+        <PDFReader 
+          isOpen={readerOpen} 
+          onClose={() => setReaderOpen(false)} 
+          url={url} 
+          book={book} 
+          bid={book.bid} 
+        />
+      )}
+    </>
   );
 };
 

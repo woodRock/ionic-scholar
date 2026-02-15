@@ -28,6 +28,7 @@ import Menu from "./components/Menu";
 import ExplorePage from "./pages/Explore";
 import LibraryPage from "./pages/Library";
 import DiscoverPage from "./pages/Discover";
+import ReadPage from "./pages/Read";
 import AccountPage from "./pages/Account";
 import BookPage from "./pages/Book";
 import TaggingWizard from "./pages/TaggingWizard";
@@ -93,6 +94,7 @@ const Authenticated: React.FC = () => {
           <Route path="/page/Explore" element={<ExplorePage />} />
           <Route path="/page/Library" element={<LibraryPage />} />
           <Route path="/page/Discover" element={<DiscoverPage />} />
+          <Route path="/page/Read" element={<ReadPage />} />
           <Route path="/page/Account" element={<AccountPage />} />
           <Route path="/page/Book/:id" element={<BookPage />} />
           <Route path="/page/TaggingWizard" element={<TaggingWizard />} />

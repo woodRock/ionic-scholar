@@ -4,6 +4,7 @@ import {
   searchOutline,
   settingsOutline,
   sparklesOutline,
+  bookOutline,
 } from "ionicons/icons";
 import {
   IonContent,
@@ -100,6 +101,12 @@ const appPages: AppPage[] = [
     url: "/page/Discover",
     iosIcon: sparklesOutline,
     mdIcon: sparklesOutline,
+  },
+  {
+    title: "Read",
+    url: "/page/Read",
+    iosIcon: bookOutline,
+    mdIcon: bookOutline,
   },
   {
     title: "Account",

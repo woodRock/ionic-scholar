@@ -116,6 +116,13 @@ const DiscoverPage = () => {
         else dislikes.push(freq);
       });
 
+      // Add highly rated library items to likes
+      library.forEach((b: any) => {
+        if (b.rating >= 4) {
+          likes.push(getWordFreq(`${b.title} ${b.description}`));
+        }
+      });
+
       // 2. Determine "Seed" topics with randomness
       const likedTopics = likes.length > 0 ? Object.keys(likes[Math.floor(Math.random() * likes.length)]).slice(0, 3) : [];
       const libraryTopics = library.flatMap((b: any) => b.keywords || []);

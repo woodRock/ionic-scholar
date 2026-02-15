@@ -195,7 +195,8 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         const batch = writeBatch(firestore);
         let count = 0;
         querySnapshot.docs.forEach((d: any) => {
-          if (d.data().title.toLowerCase() === title.toLowerCase()) {
+          const data = d.data();
+          if (data && data.title && data.title.toLowerCase() === title.toLowerCase()) {
             const docRef = doc(firestore, `users/${user.uid}/library/${d.id}`);
             batch.delete(docRef);
             count++;
@@ -269,6 +270,9 @@ export type Book = {
   urlVersionsList?: string;
   publication?: string;
   keywords?: string[];
+  quotes?: string[];
+  rating?: number;
+  inReadingList?: boolean;
 };
 
 const serialize = (object: any): any => {

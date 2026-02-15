@@ -19,6 +19,7 @@ import Citations from "../components/Citations";
 import Keywords from "../components/Keywords";
 import Quotes from "../components/Quotes";
 import Progress from "../components/Progress";
+import PDFReader from "../components/PDFReader";
 
 // Define component props
 interface BookItemProps {
@@ -74,6 +75,7 @@ const BookPage: React.FC = () => {
  * @constructor - React Functional Component
  */
 const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
+  const [readerOpen, setReaderOpen] = useState(false);
   if (!book || !bid) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -107,13 +109,23 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
         {/* Unified Action Bar */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           {url && (
-            <IonButton fill="solid" shape="round" href={url} target="_blank">
-              Read Original Paper
+            <IonButton fill="solid" shape="round" onClick={() => setReaderOpen(true)}>
+              Read Paper
             </IonButton>
           )}
           <Citations book={book} bid={bid} text="Cite Paper" />
           <Progress book={book} bid={bid} />
         </div>
+
+        {url && (
+          <PDFReader 
+            isOpen={readerOpen} 
+            onClose={() => setReaderOpen(false)} 
+            url={url} 
+            book={book} 
+            bid={bid} 
+          />
+        )}
       </div>
 
       {/* Full Width Abstract Section */}
