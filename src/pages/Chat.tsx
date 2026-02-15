@@ -142,10 +142,10 @@ ${fullContext}
       const queryVec = getWordFreq(userMsg);
       const topSources = library
         .map((b: any) => ({ title: b.title, score: cosineSimilarity(queryVec, getWordFreq(`${b.title} ${b.description}`)) }))
-        .filter(s => s.score > 0)
-        .sort((a, b) => b.score - a.score)
+        .filter((s: any) => s.score > 0)
+        .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 5)
-        .map(s => s.title);
+        .map((s: any) => s.title);
 
       setMessages(prev => [...prev, { role: 'model', text: response, sources: topSources }]);
 
