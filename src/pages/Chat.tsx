@@ -3,26 +3,19 @@ import {
   IonContent,
   IonFooter,
   IonIcon,
-  IonInput,
-  IonItem,
-  IonLabel,
-  IonList,
   IonSpinner,
   IonText,
   IonTextarea,
-  IonAvatar,
   useIonToast
 } from "@ionic/react";
 import React, { useState, useEffect, useRef } from "react";
-import { sendOutline, chatbubblesOutline, personCircleOutline, sparkles } from "ionicons/icons";
+import { sendOutline, personCircleOutline, sparkles } from "ionicons/icons";
 import Page from "../components/Page";
 import { useLibrary } from "../api/library";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
-
-// Initialize Gemini
-const API_KEY = (import.meta as any).env.VITE_GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(API_KEY);
+import { doc, getDoc } from "firebase/firestore";
+import { firestore, auth } from "../api/firebase";
 
 interface Message {
   role: 'user' | 'model';
@@ -30,7 +23,7 @@ interface Message {
   sources?: string[]; // Titles of papers used as context
 }
 
-// --- Simple Search Helpers (Lightweight RAG) ---
+// --- Simple Search Helpers (For UI Source Highlighting) ---
 const tokenize = (text: string) => 
   text.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
 
@@ -57,7 +50,7 @@ const ChatPage: React.FC = () => {
   const [library] = useLibrary();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: "Hello! I'm your research assistant. Ask me anything about your library." }
+    { role: 'model', text: "Hello! I'm your research assistant. Your entire library has been loaded into my memory. Ask me to synthesize, summarize, or find connections across your papers!" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const contentRef = useRef<HTMLIonContentElement>(null);
@@ -73,72 +66,97 @@ const ChatPage: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    if (!API_KEY) {
-      present({ message: "Missing Gemini API Key. Check .env file.", color: "danger", duration: 3000 });
+    if (!auth.currentUser) return;
+
+    // 0. Retrieve User's Personal Gemini Key from settings
+    let personalKey = "";
+    try {
+      const settingsRef = doc(firestore, `users/${auth.currentUser.uid}/settings/preferences`);
+      const settingsSnap = await getDoc(settingsRef);
+      if (settingsSnap.exists()) {
+        personalKey = settingsSnap.data().geminiApiKey || "";
+      }
+    } catch (e) {
+      console.error("Error fetching settings:", e);
+    }
+
+    if (!personalKey) {
+      present({ 
+        message: "Please add your Gemini API Key in the Account tab to use the assistant.", 
+        color: "warning", 
+        duration: 4000 
+      });
       return;
     }
 
     const userMsg = input;
     setInput("");
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    const updatedMessages = [...messages, { role: 'user', text: userMsg } as Message];
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     try {
-      // 1. Retrieval Step (RAG)
-      // Find top 15 most relevant papers from library based on user query
-      const queryVec = getWordFreq(userMsg);
-      
-      const scoredDocs = library.map((book: any) => {
-        const docText = `${book.title} ${book.description || ""} ${book.keywords?.join(" ")}`;
-        const docVec = getWordFreq(docText);
-        return {
-          title: book.title,
-          year: book.year,
-          content: `Title: ${book.title} (${book.year})
-Abstract: ${book.description || "No abstract"}
-`,
-          score: cosineSimilarity(queryVec, docVec)
-        };
+      // 1. Context Preparation (Full Library Mode)
+      const fullContext = library.slice(0, 500).map((book: any) => {
+        return `PAPER: ${book.title} (${book.year})\nAUTHORS: ${book.authors.join(", ")}\nKEYWORDS: ${(book.keywords || []).join(", ")}\nABSTRACT: ${book.description || "No abstract available."}\n`;
+      }).join("\n---\n");
+
+      // 2. Generation Step with Memory
+      const genAI = new GoogleGenerativeAI(personalKey);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-3-flash-preview",
+        generationConfig: {
+          temperature: 0.2,
+        }
       });
 
-      // Filter for relevance > 0 and take top 7 (more token efficient)
-      const contextDocs = scoredDocs
-        .filter((d: any) => d.score > 0)
-        .sort((a: any, b: any) => b.score - a.score)
-        .slice(0, 7);
-
-      const contextText = contextDocs.map((d: any) => d.content).join("\n---\n");
-      const sources = contextDocs.map((d: any) => d.title);
-
-      // 2. Generation Step
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // Prepare conversation history for Gemini (excluding the initial greeting)
+      const history = messages.slice(1).map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
       
-      const prompt = `
-You are a helpful academic research assistant. You have access to the user's personal library of papers.
-Answer the user's question using ONLY the context provided below. 
-If the answer isn't in the context, say "I couldn't find information about that in your current library."
-Cite the papers you use by their title in your answer.
+      const chat = model.startChat({
+        history: history,
+      });
 
-CONTEXT:
-${contextText}
+      const systemPrompt = `
+You are a sophisticated academic research assistant. Below is the user's ENTIRE personal library of research papers.
+Use this collection as your primary knowledge base to answer questions.
 
-USER QUESTION:
-${userMsg}
-      `;
+GUIDELINES:
+- Synthesize information across multiple papers.
+- Always cite specific paper titles when mentioning findings.
+- Maintain context of the previous conversation.
+- If the answer is not in the library, supplement with general scientific knowledge but clearly distinguish it.
 
-      const result = await model.generateContent(prompt);
+USER'S LIBRARY DATA:
+${fullContext}
+`;
+
+      // Sending system prompt + context alongside current message to ensure focus
+      const result = await chat.sendMessage(`${systemPrompt}\n\nUSER QUESTION: ${userMsg}`);
       const response = result.response.text();
 
-      setMessages(prev => [...prev, { role: 'model', text: response, sources }]);
+      // Highlight relevant sources
+      const queryVec = getWordFreq(userMsg);
+      const topSources = library
+        .map((b: any) => ({ title: b.title, score: cosineSimilarity(queryVec, getWordFreq(`${b.title} ${b.description}`)) }))
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(s => s.title);
+
+      setMessages(prev => [...prev, { role: 'model', text: response, sources: topSources }]);
 
     } catch (error: any) {
       console.error("Gemini Error:", error);
-      let errorMsg = "Sorry, I encountered an error accessing the AI model.";
+      let errorMsg = "Sorry, I encountered an error accessing the AI model. Please check your API key in the Account settings.";
       
       if (error.message?.includes("429") || error.message?.includes("Quota")) {
-        errorMsg = "AI Quota reached for today. Please try again in a few hours or upgrade your Gemini tier.";
-      } else if (error.message?.includes("404")) {
-        errorMsg = "AI Model not found. We might be using an outdated model name.";
+        errorMsg = "Your AI Quota has been reached for today. Please try again later.";
+      } else if (error.message?.includes("400") || error.message?.includes("API_KEY_INVALID")) {
+        errorMsg = "Your Gemini API Key appears to be invalid. Please update it in the Account settings.";
       }
 
       setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
@@ -149,7 +167,7 @@ ${userMsg}
 
   return (
     <Page 
-      name="Research Assistant"
+      name="Assistant"
       footer={
         <IonFooter style={{ border: 'none' }}>
           <div style={{ 
@@ -168,7 +186,7 @@ ${userMsg}
               alignItems: 'flex-end'
             }}>
               <IonTextarea 
-                placeholder="Ask about your library..." 
+                placeholder="Ask anything about your whole library..." 
                 value={input}
                 onIonInput={e => setInput(e.detail.value!)}
                 autoGrow={true}
@@ -230,7 +248,7 @@ ${userMsg}
                 {msg.sources && msg.sources.length > 0 && (
                   <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
                     <IonText style={{ fontSize: '0.7rem', fontWeight: 'bold', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
-                      CONSIDERED SOURCES:
+                      MOST RELEVANT SOURCES:
                     </IonText>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                       {msg.sources.slice(0, 3).map((s, i) => (

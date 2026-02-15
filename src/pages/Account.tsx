@@ -39,7 +39,8 @@ const AccountPage: React.FC = () => {
  */
 const Account: React.FC = () => {
   const { user } = useUser();
-  const [apiKey, setApiKey] = useState("");
+  const [ssApiKey, setSsApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [isSaving, setIsLoading] = useState(false);
   const [present] = useIonToast();
 
@@ -48,7 +49,9 @@ const Account: React.FC = () => {
     const settingsRef = doc(firestore, `users/${user.uid}/settings/preferences`);
     const unsubscribe = onSnapshot(settingsRef, (doc) => {
       if (doc.exists()) {
-        setApiKey(doc.data().ssApiKey || "");
+        const data = doc.data();
+        setSsApiKey(data.ssApiKey || "");
+        setGeminiApiKey(data.geminiApiKey || "");
       }
     });
     return () => unsubscribe();
@@ -59,7 +62,10 @@ const Account: React.FC = () => {
     setIsLoading(true);
     try {
       const settingsRef = doc(firestore, `users/${user.uid}/settings/preferences`);
-      await setDoc(settingsRef, { ssApiKey: apiKey }, { merge: true });
+      await setDoc(settingsRef, { 
+        ssApiKey,
+        geminiApiKey
+      }, { merge: true });
       present({
         message: "Settings saved successfully",
         duration: 2000,
@@ -110,19 +116,33 @@ const Account: React.FC = () => {
 
       <IonCard style={{ padding: '30px', margin: 0, boxShadow: 'none', border: '1px solid var(--ion-border-color)', borderRadius: '16px' }}>
         <div style={{ textAlign: 'left' }}>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--ion-color-step-400)', marginBottom: '8px' }}>API Integration</h3>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--ion-color-step-400)', marginBottom: '8px' }}>API Integrations</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--ion-color-step-600)', marginBottom: '20px' }}>
-            Enter your Semantic Scholar API key for higher rate limits.
+            Enter your API keys to enable research enrichment and the AI assistant.
           </p>
           
-          <div style={{ background: 'var(--ion-color-step-50)', padding: '12px', borderRadius: '8px', border: '1px solid var(--ion-border-color)' }}>
-            <IonInput
-              type="password"
-              placeholder="Semantic Scholar API Key"
-              value={apiKey}
-              onIonInput={e => setApiKey(e.detail.value!)}
-              style={{ '--padding-start': '0' }}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: 'var(--ion-color-step-50)', padding: '12px', borderRadius: '8px', border: '1px solid var(--ion-border-color)' }}>
+              <IonLabel position="stacked" style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>SEMANTIC SCHOLAR KEY</IonLabel>
+              <IonInput
+                type="password"
+                placeholder="Semantic Scholar API Key"
+                value={ssApiKey}
+                onIonInput={e => setSsApiKey(e.detail.value!)}
+                style={{ '--padding-start': '0' }}
+              />
+            </div>
+
+            <div style={{ background: 'var(--ion-color-step-50)', padding: '12px', borderRadius: '8px', border: '1px solid var(--ion-border-color)' }}>
+              <IonLabel position="stacked" style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>GOOGLE GEMINI KEY</IonLabel>
+              <IonInput
+                type="password"
+                placeholder="Gemini API Key"
+                value={geminiApiKey}
+                onIonInput={e => setGeminiApiKey(e.detail.value!)}
+                style={{ '--padding-start': '0' }}
+              />
+            </div>
           </div>
 
           <IonButton 
@@ -132,11 +152,11 @@ const Account: React.FC = () => {
             disabled={isSaving}
           >
             <IonIcon slot="start" icon={saveOutline} />
-            Save API Key
+            Save API Keys
           </IonButton>
           
-          <p style={{ fontSize: '0.75rem', marginTop: '12px', color: 'var(--ion-color-step-500)', textAlign: 'center' }}>
-            Get a free key at <a href="https://www.semanticscholar.org/product/api" target="_blank" rel="noreferrer">semanticscholar.org</a>
+          <p style={{ fontSize: '0.7rem', marginTop: '12px', color: 'var(--ion-color-step-500)', textAlign: 'center' }}>
+            Keys are stored securely in your private Firebase profile.
           </p>
         </div>
       </IonCard>
