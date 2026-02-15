@@ -12,7 +12,7 @@ import {
   IonChip,
 } from "@ionic/react";
 import React, { useState, useMemo } from "react";
-import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp } from "ionicons/icons";
+import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp, star } from "ionicons/icons";
 import { v4 } from "uuid";
 import { useNavigate, Link } from "react-router-dom";
 import Page from "../components/Page";
@@ -39,7 +39,7 @@ const LibraryPage = () => {
  * The library is reloaded to reflect those changes.
  */
 const Library = () => {
-  const [library, , , , clear] = useLibrary();
+  const [library, , , , clear, , pinnedTags, togglePinned] = useLibrary();
   const navigate = useNavigate();
   const [showAlert, setShowAlert] = useState(false);
   
@@ -50,28 +50,22 @@ const Library = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllTags, setShowAllTags] = useState(false);
 
-  // Calculate tag frequencies and unique tags
-  const { topTags, otherTags } = useMemo(() => {
-    const counts: Record<string, number> = {};
-    library.forEach((book: any) => {
-      (book.keywords || []).forEach((tag: string) => {
-        const normalized = tag.toLowerCase();
-        counts[normalized] = (counts[normalized] || 0) + 1;
-      });
-    });
+  // Group tags into Pinned vs Others, both sorted alphabetically
+  const { pinned, others } = useMemo(() => {
+    const allUniqueTags: string[] = Array.from(new Set(
+      library.flatMap((book: any) => (book.keywords || []).map((k: string) => k.toLowerCase()))
+    ));
 
-    const sortedByFrequency = Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([tag]) => tag);
+    const pinnedGroup = allUniqueTags
+      .filter(tag => pinnedTags.includes(tag))
+      .sort((a: string, b: string) => a.localeCompare(b));
 
-    const top = sortedByFrequency.slice(0, 20).sort((a, b) => a.localeCompare(b));
-    const other = sortedByFrequency.slice(20).sort((a, b) => a.localeCompare(b));
+    const othersGroup = allUniqueTags
+      .filter(tag => !pinnedTags.includes(tag))
+      .sort((a: string, b: string) => a.localeCompare(b));
 
-    return {
-      topTags: top,
-      otherTags: other
-    };
-  }, [library]);
+    return { pinned: pinnedGroup, others: othersGroup };
+  }, [library, pinnedTags]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -106,8 +100,24 @@ const Library = () => {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const renderTagChip = (tag: string, isPinned: boolean) => (
+    <IonChip 
+      key={tag} 
+      color={selectedTags.includes(tag) ? "primary" : (isPinned ? "secondary" : "medium")}
+      outline={!selectedTags.includes(tag)}
+      onClick={() => toggleTag(tag)}
+      onDoubleClick={() => togglePinned(tag)}
+      style={{ margin: 0, fontSize: '0.8rem' }}
+      title="Double-click to pin/unpin"
+    >
+      {isPinned && <IonIcon icon={star} style={{ fontSize: '0.7rem', marginRight: '4px' }} />}
+      <IonLabel>{tag}</IonLabel>
+    </IonChip>
+  );
+
   return (
     <div style={{ padding: '16px', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* ... existing header code ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <BibTeXActions />
@@ -163,26 +173,22 @@ const Library = () => {
           </IonButton>
         </div>
 
-        {(topTags.length > 0) && (
+        {(pinned.length > 0 || others.length > 0) && (
           <div style={{ marginTop: '16px' }}>
-            <IonLabel style={{ display: 'block', fontWeight: '600', fontSize: '0.8rem', color: 'var(--ion-color-step-500)', marginBottom: '8px' }}>
-              FILTER BY TAG:
+            <IonLabel style={{ display: 'block', fontWeight: '600', fontSize: '0.75rem', color: 'var(--ion-color-step-500)', marginBottom: '8px', letterSpacing: '0.05em' }}>
+              FILTER BY TAG (Double-click to pin):
             </IonLabel>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {topTags.map(tag => (
-                <IonChip 
-                  key={tag} 
-                  color={selectedTags.includes(tag) ? "primary" : "medium"}
-                  outline={!selectedTags.includes(tag)}
-                  onClick={() => toggleTag(tag)}
-                  style={{ margin: 0, fontSize: '0.8rem' }}
-                >
-                  <IonLabel>{tag}</IonLabel>
-                </IonChip>
-              ))}
+              {pinned.map(tag => renderTagChip(tag, true))}
               
-              {otherTags.length > 0 && (
+              {others.length > 0 && !showAllTags && pinned.length > 0 && (
+                <div style={{ width: '100%', height: '1px', background: 'var(--ion-border-color)', margin: '8px 0' }} />
+              )}
+
+              {(showAllTags || pinned.length === 0) && others.map(tag => renderTagChip(tag, false))}
+              
+              {others.length > 0 && (
                 <IonButton 
                   fill="clear" 
                   size="small" 
@@ -190,34 +196,10 @@ const Library = () => {
                   style={{ fontSize: '0.75rem', '--padding-start': '4px' }}
                 >
                   <IonIcon slot="end" icon={showAllTags ? chevronUp : chevronDown} />
-                  {showAllTags ? "Hide rare tags" : `Show ${otherTags.length} more...`}
+                  {showAllTags ? "Hide rare tags" : (pinned.length > 0 ? `Show ${others.length} more...` : "Show all tags")}
                 </IonButton>
               )}
             </div>
-
-            {showAllTags && otherTags.length > 0 && (
-              <div style={{ 
-                marginTop: '8px', 
-                padding: '12px', 
-                background: 'var(--ion-color-step-100)', 
-                borderRadius: '12px',
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: '6px' 
-              }}>
-                {otherTags.map(tag => (
-                  <IonChip 
-                    key={tag} 
-                    color={selectedTags.includes(tag) ? "primary" : "medium"}
-                    outline={!selectedTags.includes(tag)}
-                    onClick={() => toggleTag(tag)}
-                    style={{ margin: 0, fontSize: '0.75rem', opacity: 0.8 }}
-                  >
-                    <IonLabel>{tag}</IonLabel>
-                  </IonChip>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>

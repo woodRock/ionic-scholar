@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { collection, LibraryCollection, writeBatch, firestore } from "./firebase";
-import { doc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useUser } from "./user";
 import { findPaperUrl } from "./scholar";
 
@@ -10,32 +10,51 @@ import { findPaperUrl } from "./scholar";
 
 const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [library, setLibrary] = useState<any[]>([]);
+  const [pinnedTags, setPinnedTags] = useState<string[]>([]);
   const { user } = useUser();
   const processingRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (user) {
-      // Using the updated collection API with proper types
-      const unsubscribe = collection(user.uid)
+      // Subscribe to library
+      const unsubscribeLib = collection(user.uid)
         .orderBy("title")
         .onSnapshot((querySnapshot: any) => {
           const data: any = querySnapshot.docs.map((doc: any) => ({
             ...doc.data(),
-            bid: doc.id // Ensure bid is always available
+            bid: doc.id
           }));
           setLibrary(data);
         });
-        
-      // Cleanup subscription on unmount
-      return () => {
-        if (unsubscribe) {
-          unsubscribe();
+
+      // Subscribe to pinned tags/settings
+      const settingsRef = doc(firestore, `users/${user.uid}/settings/preferences`);
+      const unsubscribeSettings = onSnapshot(settingsRef, (doc) => {
+        if (doc.exists()) {
+          setPinnedTags(doc.data().pinnedTags || []);
         }
+      });
+        
+      return () => {
+        unsubscribeLib();
+        unsubscribeSettings();
       };
     } else {
       setLibrary([]);
+      setPinnedTags([]);
     }
   }, [user]);
+
+  const togglePinnedTag = async (tag: string) => {
+    if (!user) return;
+    const normalized = tag.toLowerCase();
+    const newPinned = pinnedTags.includes(normalized)
+      ? pinnedTags.filter(t => t !== normalized)
+      : [...pinnedTags, normalized];
+    
+    const settingsRef = doc(firestore, `users/${user.uid}/settings/preferences`);
+    await setDoc(settingsRef, { pinnedTags: newPinned }, { merge: true });
+  };
 
   /**
    * Background process to enrich papers missing URLs
@@ -89,7 +108,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       authors: book.authors || ["Unknown Author"],
       year: book.year || new Date().getFullYear(),
       description: book.description || "",
-      keywords: (book.keywords || []).map(k => k.toLowerCase())
+      keywords: (book.keywords || []).map((k: string) => k.toLowerCase())
     };
 
     // Deterministic ID to prevent duplicates: sanitized title (up to 100 chars) + year
@@ -178,7 +197,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     // Normalize tags to lowercase if they are being updated
     const normalizedData = { ...data };
     if (normalizedData.keywords) {
-      normalizedData.keywords = normalizedData.keywords.map(k => k.toLowerCase());
+      normalizedData.keywords = normalizedData.keywords.map((k: string) => k.toLowerCase());
     }
 
     collection(user.uid).doc(bid).set(normalizedData, { merge: true })
@@ -207,7 +226,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   return (
-    <LibraryContext.Provider value={[library, find, add, remove, clear, update]}>
+    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag]}>
       {children}
     </LibraryContext.Provider>
   );
@@ -221,6 +240,7 @@ const useLibrary = () => useContext(LibraryContext);
  * This is a refactoring of IArticle name for simplification.
  */
 export type Book = {
+  bid?: string;
   title: string;
   year: number;
   authors: string[];
@@ -231,6 +251,7 @@ export type Book = {
   relatedUrl?: string;
   urlVersionsList?: string;
   publication?: string;
+  keywords?: string[];
 };
 
 const serialize = (object: any): any => {
