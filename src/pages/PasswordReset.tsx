@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { IonButton, IonInput, IonItem, IonLabel, IonList } from "@ionic/react";
+import { IonButton, IonInput, IonItem, IonLabel, IonList, IonCard } from "@ionic/react";
 import { auth } from "../api/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
@@ -33,48 +33,70 @@ const Reset: React.FC = () => {
   const [email, setEmail] = useState("");
   const [emailHasBeenSent, setEmailHasBeenSent] = useState(false);
   const [error, setError] = useState("");
-  let history = useHistory();
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const sendResetEmail = () => {
+  const sendResetEmail = async () => {
+    if (!email) {
+      setError("Please enter your email.");
+      return;
+    }
+    setIsLoading(true);
     setError("");
-    // Update to Firebase v9 syntax
-    sendPasswordResetEmail(auth, email)
-      .then(() => {
-        setEmailHasBeenSent(true);
-        setTimeout(() => {
-          setEmailHasBeenSent(false);
-        }, 3000);
-      })
-      .catch(() => {
-        setError("Error resetting password");
-      });
+    
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setEmailHasBeenSent(true);
+    } catch (err: any) {
+      setError("Error resetting password. Check your email address.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (emailHasBeenSent) {
-    return <Success />;
+    return (
+      <IonCard style={{ maxWidth: '400px', width: '90%', padding: '30px', borderRadius: '16px', textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📧</div>
+        <h2 style={{ fontWeight: '800', margin: '0 0 10px', color: 'var(--ion-color-primary)' }}>Email Sent!</h2>
+        <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '30px' }}>Check your inbox for instructions to reset your password.</p>
+        <IonButton expand="block" onClick={() => navigate("/page/SignIn")}>Return to Login</IonButton>
+      </IonCard>
+    );
   }
 
   return (
-    <IonList>
-      <IonLabel>Enter the email associated with your account.</IonLabel>
-      {error ? <IonItem style={{ color: "red" }}>{error}</IonItem> : null}
-      <IonInput
-        type="email"
-        value={email}
-        placeholder="Email"
-        onIonChange={(e: any) => setEmail(e.detail.value!)}
-      />
-      <IonButton expand="full" onClick={sendResetEmail}>
-        Continue
+    <IonCard style={{ maxWidth: '400px', width: '90%', padding: '30px', borderRadius: '16px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h2 style={{ fontWeight: '800', fontSize: '1.75rem', margin: '0', color: 'var(--ion-color-primary)' }}>Reset Password</h2>
+        <p style={{ color: 'var(--ion-color-step-600)', marginTop: '8px' }}>Enter your email to receive a reset link</p>
+      </div>
+
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem' }}>
+          {error}
+        </div>
+      )}
+
+      <IonList lines="none">
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '24px' }}>
+          <IonInput
+            type="email"
+            value={email}
+            placeholder="Email Address"
+            onIonChange={(e) => setEmail(e.detail.value!)}
+          />
+        </IonItem>
+      </IonList>
+
+      <IonButton expand="block" onClick={sendResetEmail} disabled={isLoading} style={{ marginBottom: '16px' }}>
+        {isLoading ? 'Sending...' : 'Send Reset Link'}
       </IonButton>
-      <IonButton
-        expand="full"
-        color="light"
-        onClick={() => history.push("/page/SignIn")}
-      >
-        Sign In
+
+      <IonButton expand="block" fill="clear" onClick={() => navigate("/page/SignIn")} color="medium">
+        Back to Login
       </IonButton>
-    </IonList>
+    </IonCard>
   );
 };
 

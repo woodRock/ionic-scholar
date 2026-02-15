@@ -17,6 +17,7 @@ import {
   query,
   orderBy,
   onSnapshot,
+  writeBatch,
   CollectionReference,
   DocumentData,
   DocumentSnapshot as FirestoreDocumentSnapshot
@@ -67,7 +68,7 @@ type DocumentSnapshot = {
 
 // Document reference type with v8 API methods
 interface DocumentRef {
-  set: (data: any) => Promise<void>;
+  set: (data: any, options?: { merge?: boolean }) => Promise<void>;
   delete: () => Promise<void>;
   get: () => Promise<DocumentSnapshot>;
   onSnapshot: (callback: (doc: DocumentSnapshot) => void) => () => void;
@@ -174,7 +175,7 @@ const collection = (uid: string): LibraryCollection => {
     doc: (docId: string) => {
       const docRef = doc(libraryRef, docId);
       return {
-        set: (data: any) => setDoc(docRef, data),
+        set: (data: any, options?: any) => setDoc(docRef, data, options),
         delete: () => deleteDoc(docRef),
         get: async () => {
           const snapshot = await getDoc(docRef);
@@ -225,6 +226,7 @@ export {
   generateUserDocument,
   getUserDocument,
   collection,
+  writeBatch,
 };
 
 export type { LibraryCollection, UserData, DocumentSnapshot};

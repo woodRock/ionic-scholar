@@ -7,29 +7,33 @@ import { auth, generateUserDocument } from "./firebase";
  * It updates upon changes to the users authentication state.
  */
 
-const UserContext = createContext<any>(null);
+const UserContext = createContext<{ user: any; isLoading: boolean }>({ user: null, isLoading: true });
 
 const useUser = () => useContext(UserContext);
 
-const UserProvider: React.FC = ({ children }) => {
+const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (userAuth: any) => {
-      const user = await generateUserDocument(userAuth);
-      setUser(user);
+      setIsLoading(true);
+      if (userAuth) {
+        const userDoc = await generateUserDocument(userAuth);
+        setUser(userDoc || userAuth); // Fallback to auth object if doc fails
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
     });
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((userRef: any) => {
-      setUser(userRef);
-    });
-    return unsubscribe;
-  });
-
-  return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
+  return (
+    <UserContext.Provider value={{ user, isLoading }}>
+      {children}
+    </UserContext.Provider>
+  );
 };
 
 /**
@@ -40,13 +44,13 @@ const UserProvider: React.FC = ({ children }) => {
 
 let error = "";
 
-const validEmail = (email: string): Boolean => {
+const validEmail = (email: string): boolean => {
   const condition = email !== "";
   error = !condition ? "Invalid Email" : error;
   return condition;
 };
 
-const validUsername = (username: string): Boolean => {
+const validUsername = (username: string): boolean => {
   const condition = username !== "";
   error = !condition ? "Invalid Username" : error;
   return condition;
@@ -58,7 +62,7 @@ const validPassword = (p1: string) => {
   return condition;
 };
 
-const passwordsMatch = (p1: string, p2: string): Boolean => {
+const passwordsMatch = (p1: string, p2: string): boolean => {
   const condition = p1 === p2;
   error = !condition ? "Passwords do not match" : error;
   return condition;

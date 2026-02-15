@@ -1,5 +1,6 @@
 import {
   IonButton,
+  IonCard,
   IonIcon,
   IonInput,
   IonItem,
@@ -8,7 +9,7 @@ import {
 } from "@ionic/react";
 import { logoGoogle } from "ionicons/icons";
 import React, { useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useUser } from "../api/user";
 import { auth, signInWithGoogle } from "../api/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -38,84 +39,104 @@ const SignInPage: React.FC = () => {
  * @constructor
  */
 const SignIn: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const user = useUser();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const doSignIn = () => {
-    setError(""); // Clear the previous errors
-    signInWithEmailAndPasswordHandler();
-    onSuccess();
-  };
-
-  const doGoogle = () => {
-    setError(""); // Clear the previous errors
-    signInWithGoogle();
-    onSuccess();
-  };
-
-  const signInWithEmailAndPasswordHandler = () => {
-    // Updated to Firebase v9 syntax
-    signInWithEmailAndPassword(auth, email, password).catch((error: any) => {
+  const doSignIn = async () => {
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/page/Explore");
+    } catch (error: any) {
       setError(error.message);
-      console.log(error);
-    });
-  };
-
-  const onSuccess = () => {
-    if (user) {
-      setError("Success");
-      history.push("/page/Explore");
-      clear();
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const clear = () => {
-    setTimeout(() => {
-      setPassword("");
-      setError("");
-    }, 1000);
+  const doGoogle = async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      await signInWithGoogle();
+      navigate("/page/Explore");
+    } catch (error: any) {
+      setError("Google Sign-In failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const messageColor = error === "Success" ? "green" : "red";
-
   return (
-    <IonList>
-      {error ? (
-        <IonItem style={{ color: messageColor }}>{error}</IonItem>
-      ) : null}
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          placeholder="Email"
-          onIonChange={(e) => setEmail(e.detail.value!)}
-          value={email}
-        />
-      </IonItem>
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          type="password"
-          placeholder="Password"
-          onIonChange={(e) => setPassword(e.detail.value!)}
-          value={password}
-        />
-      </IonItem>
-      <IonItem routerLink="/page/Reset">
-        <a>Forgot password?</a>
-      </IonItem>
-      <IonButton expand="full" onClick={doSignIn}>
-        Sign In
+    <IonCard style={{ maxWidth: '400px', width: '90%', padding: '20px', borderRadius: '16px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h2 style={{ fontWeight: '800', fontSize: '1.75rem', margin: '0', color: 'var(--ion-color-primary)' }}>Welcome Back</h2>
+        <p style={{ color: 'var(--ion-color-step-600)', marginTop: '8px' }}>Log in to your research library</p>
+      </div>
+
+      {error && (
+        <div style={{ 
+          background: 'var(--ion-color-danger-tint, #fee2e2)', 
+          color: 'var(--ion-color-danger, #b91c1c)', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          marginBottom: '20px',
+          fontSize: '0.9rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <IonList lines="none">
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '12px' }}>
+          <IonInput
+            placeholder="Email"
+            type="email"
+            onIonChange={(e) => setEmail(e.detail.value!)}
+            value={email}
+          />
+        </IonItem>
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '20px' }}>
+          <IonInput
+            type="password"
+            placeholder="Password"
+            onIonChange={(e) => setPassword(e.detail.value!)}
+            value={password}
+          />
+        </IonItem>
+      </IonList>
+
+      <IonButton expand="block" onClick={doSignIn} disabled={isLoading} style={{ marginBottom: '12px', '--box-shadow': 'none' }}>
+        {isLoading ? 'Signing In...' : 'Sign In'}
       </IonButton>
-      <IonButton expand="full" color="light" onClick={doGoogle}>
-        Sign In with Google
-        <IonIcon slot="end" icon={logoGoogle} />
+
+      <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: 'var(--ion-color-step-400)' }}>
+        <div style={{ flex: 1, height: '1px', background: 'var(--ion-border-color)' }}></div>
+        <span style={{ padding: '0 10px', fontSize: '0.8rem' }}>OR</span>
+        <div style={{ flex: 1, height: '1px', background: 'var(--ion-border-color)' }}></div>
+      </div>
+
+      <IonButton expand="block" color="light" fill="outline" onClick={doGoogle} disabled={isLoading} style={{ marginBottom: '20px' }}>
+        <IonIcon slot="start" icon={logoGoogle} />
+        Continue with Google
       </IonButton>
-      <IonItem routerLink="/page/SignUp">
-        {" "}
-        <IonLabel>Don't have an account?</IonLabel> <a href="#"> Sign Up</a>
-      </IonItem>
-    </IonList>
+
+      <div style={{ textAlign: 'center', fontSize: '0.9rem' }}>
+        <p style={{ color: 'var(--ion-color-step-600)' }}>
+          Don&apos;t have an account? <a onClick={() => navigate("/page/SignUp")} style={{ color: 'var(--ion-color-primary)', fontWeight: '600', cursor: 'pointer' }}>Sign Up</a>
+        </p>
+        <a onClick={() => navigate("/page/Reset")} style={{ color: 'var(--ion-color-step-500)', fontSize: '0.8rem', cursor: 'pointer' }}>Forgot password?</a>
+      </div>
+    </IonCard>
   );
 };
 

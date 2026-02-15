@@ -1,7 +1,7 @@
-import { IonButton, IonItem, IonList } from "@ionic/react";
+import { IonButton, IonItem, IonList, IonCard } from "@ionic/react";
 import React from "react";
 import { auth } from "../api/firebase";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Page from "../components/Page";
 import CenterChild from "../components/Center";
 
@@ -26,29 +26,28 @@ const SignOutPage: React.FC = () => {
  * @constructor
  */
 const SignOut: React.FC = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const back = () => {
-    history.push("/page/Explore");
+    navigate("/page/Explore");
   };
 
   const signOut = () => {
     auth.signOut();
-    history.push("/page/SignIn");
+    navigate("/page/SignIn");
   };
 
   return (
-    <IonList>
-      <IonItem>
-        <p>Are you sure you want to sign out?</p>
-      </IonItem>
-      <IonButton expand="full" onClick={signOut}>
-        Yes
-      </IonButton>
-      <IonButton expand="full" color="light" onClick={back}>
-        Cancel
-      </IonButton>
-    </IonList>
+    <IonCard style={{ maxWidth: '400px', width: '90%', padding: '30px', borderRadius: '16px', textAlign: 'center' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '20px' }}>👋</div>
+      <h2 style={{ fontWeight: '800', margin: '0 0 10px', color: 'var(--ion-color-primary)' }}>Sign Out?</h2>
+      <p style={{ color: 'var(--ion-color-step-600)', marginBottom: '30px' }}>Are you sure you want to sign out of your research library?</p>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <IonButton expand="block" color="danger" onClick={signOut}>Yes, Sign Out</IonButton>
+        <IonButton expand="block" fill="clear" color="medium" onClick={back}>Stay Signed In</IonButton>
+      </div>
+    </IonCard>
   );
 };
 

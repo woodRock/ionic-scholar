@@ -21,17 +21,16 @@ interface ProgressProps {
   bid: string;
 }
 
-const Progress: React.FC<ProgressProps> = ({ children, book, bid }) => {
+const Progress: React.FC<ProgressProps> = ({ book, bid }) => {
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [totalInput, setTotalInput] = useState("");
   const [totalEdit, setTotalEdit] = useState(false);
-  const user = useUser();
+  const { user } = useUser();
 
   useEffect(() => {
     if (user && bid) {
-      // Set up snapshot listener for the document
       const unsubscribe = collection(user.uid)
         .doc(bid)
         .onSnapshot((doc: DocumentSnapshot) => {
@@ -45,116 +44,70 @@ const Progress: React.FC<ProgressProps> = ({ children, book, bid }) => {
             }
           }
         });
-      
-      // Cleanup function to unsubscribe when component unmounts
-      return () => {
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      };
+      return () => unsubscribe?.();
     }
   }, [bid, user]);
 
   const firebase = () => {
-    if (!book || !user) {
-      return;
-    }
-    const progress = serialize({
-      current: Number(input),
-      total: Number(totalInput),
-    });
+    if (!book || !user) return;
     const updatedBook = {
       ...book,
-      progress: progress,
+      progress: { current: Number(input), total: Number(totalInput) }
     };
-    const docId = `${urlFriendly(book.title + book.year)}`;
-    
-    collection(user.uid)
-      .doc(docId)
-      .set(updatedBook)
-      .catch(function (error: any) {
-        console.error("Error writing document: ", error);
-      });
+    collection(user.uid).doc(urlFriendly(book.title + book.year)).set(updatedBook);
   };
 
-  const roundNumber = (current: number): string => {
-    const decimalPlaces = 0;
-    return current.toFixed(decimalPlaces);
-  };
-
-  const progress = (current: number, total: number): string => {
-    const percentage = (current / total) * 100;
-    return `${roundNumber(percentage)}%`;
-  };
-
-  const updateCurrent = () => {
-    const current = Number(input);
-    const total = Number(totalInput);
-    if (current > total || current < 0) {
-      return;
-    }
-    setEdit(false);
-    firebase();
-  };
-
-  const setTheTotal = () => {
-    setTotalEdit(false);
-    setEnabled(true);
-    firebase();
+  const getPercentage = () => {
+    const current = Number(input) || 0;
+    const total = Number(totalInput) || 1;
+    return Math.round((current / total) * 100);
   };
 
   if (!enabled) {
-    if (totalEdit) {
-      return (
-        <IonItem>
-          <IonInput
-            type="text"
-            value={totalInput}
-            placeholder="total pages: e.g. 500"
-            onIonChange={(e) => setTotalInput(e.detail.value!)}
-          />
-          <IonItem>
-            <IonButton onClick={setTheTotal}>Set</IonButton>
-          </IonItem>
-        </IonItem>
-      );
-    }
-
     return (
-      <IonItem>
-        <IonLabel>Progress</IonLabel>
-        <IonButton onClick={() => setTotalEdit(true)}>Enable</IonButton>
-      </IonItem>
-    );
-  }
-
-  if (edit) {
-    return (
-      <IonItem>
-        <IonInput
-          type="text"
-          value={input}
-          onIonChange={(e) => setInput(e.detail.value!)}
-          placeholder={`current page: e.g. 100`}
-        />
-        <IonText>{` of ${totalInput} pages`}</IonText>
-        <IonButton slot="end" onClick={updateCurrent}>
-          Set
-        </IonButton>
-      </IonItem>
+      <div style={{ textAlign: 'center', padding: '10px' }}>
+        {totalEdit ? (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <IonInput
+              placeholder="Total pages"
+              value={totalInput}
+              onIonChange={e => setTotalInput(e.detail.value!)}
+              style={{ background: 'var(--ion-color-step-50)', borderRadius: '8px', padding: '0 10px' }}
+            />
+            <IonButton onClick={() => { setEnabled(true); setTotalEdit(false); firebase(); }}>Set</IonButton>
+          </div>
+        ) : (
+          <IonButton fill="outline" onClick={() => setTotalEdit(true)}>Enable Progress Tracking</IonButton>
+        )}
+      </div>
     );
   }
 
   return (
-    <IonItem>
-      <IonLabel slot="start">
-        <progress value={Number(input)} max={Number(totalInput)} />
-      </IonLabel>
-      <IonText>{progress(Number(input), Number(totalInput))}</IonText>
-      <IonButton slot="end" onClick={() => setEdit(!edit)}>
-        Edit
-      </IonButton>
-    </IonItem>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'flex-end' }}>
+        <h4 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'var(--ion-color-primary)' }}>{getPercentage()}%</h4>
+        <span style={{ fontSize: '0.8rem', color: 'var(--ion-color-step-500)' }}>{input || 0} / {totalInput} pages</span>
+      </div>
+      
+      <div style={{ width: '100%', height: '12px', background: 'var(--ion-color-step-100)', borderRadius: '6px', overflow: 'hidden', marginBottom: '16px' }}>
+        <div style={{ width: `${getPercentage()}%`, height: '100%', background: 'var(--ion-color-primary)', transition: 'width 0.3s ease' }}></div>
+      </div>
+
+      {edit ? (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <IonInput
+            value={input}
+            onIonChange={e => setInput(e.detail.value!)}
+            placeholder="Current page"
+            style={{ background: 'var(--ion-color-step-50)', borderRadius: '8px', padding: '0 10px' }}
+          />
+          <IonButton onClick={() => { setEdit(false); firebase(); }}>Update</IonButton>
+        </div>
+      ) : (
+        <IonButton fill="clear" size="small" onClick={() => setEdit(true)} style={{ '--padding-start': '0' }}>Update Current Page</IonButton>
+      )}
+    </div>
   );
 };
 

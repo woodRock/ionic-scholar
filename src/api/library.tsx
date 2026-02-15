@@ -1,16 +1,17 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { collection, LibraryCollection } from "./firebase";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import { collection, LibraryCollection, writeBatch, firestore } from "./firebase";
+import { doc } from "firebase/firestore";
 import { useUser } from "./user";
+import { findPaperUrl } from "./scholar";
 
 /**
- * This class is represents the user library as a global variable.
- * We store the business logic for interactions with that library here.
- * The library is accessed only one the user has signed in.
+ * This class is represents the user library as global variable.
  */
 
-const LibraryProvider: React.FC = ({ children }) => {
+const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [library, setLibrary] = useState<any[]>([]);
-  const user = useUser();
+  const { user } = useUser();
+  const processingRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (user) {
@@ -18,7 +19,10 @@ const LibraryProvider: React.FC = ({ children }) => {
       const unsubscribe = collection(user.uid)
         .orderBy("title")
         .onSnapshot((querySnapshot: any) => {
-          const data: any = querySnapshot.docs.map((doc: any) => doc.data());
+          const data: any = querySnapshot.docs.map((doc: any) => ({
+            ...doc.data(),
+            bid: doc.id // Ensure bid is always available
+          }));
           setLibrary(data);
         });
         
@@ -28,39 +32,118 @@ const LibraryProvider: React.FC = ({ children }) => {
           unsubscribe();
         }
       };
+    } else {
+      setLibrary([]);
     }
   }, [user]);
 
-  const isNotADuplicate = (book: Book) => {
-    return !library.includes(book);
-  };
+  /**
+   * Background process to enrich papers missing URLs
+   */
+  useEffect(() => {
+    if (!user || library.length === 0 || processingRef.current) return;
+
+    const enrichMissingUrls = async () => {
+      processingRef.current = true;
+      const missing = library.filter(b => !b.url || b.url === "");
+      
+      if (missing.length === 0) {
+        processingRef.current = false;
+        return;
+      }
+
+      console.log(`[Background] Found ${missing.length} papers missing URLs. Starting slow enrichment...`);
+
+      for (const book of missing) {
+        // Slow down to avoid rate limits (1 paper every 5 seconds)
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        try {
+          const foundUrl = await findPaperUrl(book.title);
+          if (foundUrl) {
+            console.log(`[Background] Linked: ${book.title}`);
+            collection(user.uid).doc(book.bid).set({ ...book, url: foundUrl });
+          }
+        } catch (err: any) {
+          if (err.message === "RATE_LIMIT") {
+            console.warn("[Background] Rate limited by Semantic Scholar. Pausing for 60s...");
+            await new Promise(resolve => setTimeout(resolve, 60000));
+          } else {
+            console.error("[Background] Error enriching paper:", err);
+          }
+        }
+      }
+      processingRef.current = false;
+    };
+
+    enrichMissingUrls();
+  }, [library.length, user]);
 
   const addToLibrary = (book: Book) => {
-    if (book.pdf == null) {
-      book = {...book, pdf: "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png" };
-    }
-    const data = {
-      book: serialize(book),
-      uid: `${urlFriendly(book.title + book.year)}`,
-    };
+    if (!user) return;
     
-    // Using the updated collection API
+    // Ensure essential fields exist for Firebase and normalize tags
+    const cleanBook = {
+      ...book,
+      pdf: book.pdf || "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png",
+      authors: book.authors || ["Unknown Author"],
+      year: book.year || new Date().getFullYear(),
+      description: book.description || "",
+      keywords: (book.keywords || []).map(k => k.toLowerCase())
+    };
+
+    // Deterministic ID to prevent duplicates: sanitized title (up to 100 chars) + year
+    const docId = `${urlFriendly(cleanBook.title).substring(0, 100)}_${cleanBook.year}`;
+    
     collection(user.uid)
-      .doc(data.uid)
-      .set(book)
+      .doc(docId)
+      .set(cleanBook)
       .catch(function (err: any) {
         console.error("Error writing document: ", err);
       });
   };
 
-  const error = (message: string) => {
-    console.log(message);
+  /**
+   * One-time background process to remove legacy duplicates created by random hashes
+   */
+  useEffect(() => {
+    if (!user || library.length === 0) return;
+
+    const cleanupDuplicates = async () => {
+      const seen = new Set();
+      const duplicates: string[] = [];
+
+      library.forEach(book => {
+        const key = `${book.title.toLowerCase()}_${book.year}`;
+        if (seen.has(key)) {
+          duplicates.push(book.bid);
+        } else {
+          seen.add(key);
+        }
+      });
+
+      if (duplicates.length > 0) {
+        console.log(`[Cleanup] Found ${duplicates.length} duplicate entries. Cleaning up...`);
+        const batch = writeBatch(firestore);
+        duplicates.forEach(bid => {
+          const docRef = doc(firestore, `users/${user.uid}/library/${bid}`);
+          batch.delete(docRef);
+        });
+        await batch.commit();
+      }
+    };
+
+    cleanupDuplicates();
+  }, [library.length, user]);
+
+  const isNotADuplicate = (book: Book) => {
+    return !library.some(b => b.title.toLowerCase() === book.title.toLowerCase());
   };
 
   const add = (book: Book) => {
-    isNotADuplicate(book)
-      ? addToLibrary(book)
-      : error(`"${book.title} (${book.year})" is already in the library`);
+    if (isNotADuplicate(book)) {
+      addToLibrary(book);
+    }
   };
 
   const find = (title: string) => {
@@ -68,24 +151,63 @@ const LibraryProvider: React.FC = ({ children }) => {
   };
 
   const remove = (title: string) => {
-    // Using the updated collection API
+    if (!user) return;
+    
     collection(user.uid)
       .get()
       .then((querySnapshot: any) => {
-        querySnapshot.docs.forEach((doc: any) => {
-          if (doc.data().title === title) {
-            collection(user.uid).doc(doc.id).delete();
+        const batch = writeBatch(firestore);
+        let count = 0;
+        querySnapshot.docs.forEach((d: any) => {
+          if (d.data().title.toLowerCase() === title.toLowerCase()) {
+            const docRef = doc(firestore, `users/${user.uid}/library/${d.id}`);
+            batch.delete(docRef);
+            count++;
           }
         });
-      });
+        if (count > 0) {
+          return batch.commit();
+        }
+      })
+      .catch(err => console.error("Error removing document: ", err));
+  };
+
+  const update = (bid: string, data: Partial<Book>) => {
+    if (!user || !bid) return;
+    
+    // Normalize tags to lowercase if they are being updated
+    const normalizedData = { ...data };
+    if (normalizedData.keywords) {
+      normalizedData.keywords = normalizedData.keywords.map(k => k.toLowerCase());
+    }
+
+    collection(user.uid).doc(bid).set(normalizedData, { merge: true })
+      .catch(err => console.error("Error updating document: ", err));
   };
 
   const clear = () => {
-    setLibrary([]);
+    if (!user) return;
+    
+    collection(user.uid)
+      .get()
+      .then((querySnapshot: any) => {
+        const batch = writeBatch(firestore);
+        querySnapshot.docs.forEach((d: any) => {
+          const docRef = doc(firestore, `users/${user.uid}/library/${d.id}`);
+          batch.delete(docRef);
+        });
+        return batch.commit();
+      })
+      .then(() => {
+        setLibrary([]);
+      })
+      .catch((err: any) => {
+        console.error("Error clearing library: ", err);
+      });
   };
 
   return (
-    <LibraryContext.Provider value={[library, find, add, remove, clear]}>
+    <LibraryContext.Provider value={[library, find, add, remove, clear, update]}>
       {children}
     </LibraryContext.Provider>
   );
@@ -116,7 +238,7 @@ const serialize = (object: any): any => {
 };
 
 const urlFriendly = (id: string) => {
-  return id.replace(/ /g, "_");
+  return id.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 };
 
 export default LibraryProvider;

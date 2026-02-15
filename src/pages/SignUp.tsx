@@ -1,6 +1,6 @@
-import { IonButton, IonInput, IonItem, IonList } from "@ionic/react";
+import { IonButton, IonInput, IonItem, IonList, IonLabel, IonCard } from "@ionic/react";
 import React, { useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { auth, generateUserDocument } from "../api/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { validation } from "../api/user";
@@ -33,92 +33,94 @@ const SignUp: React.FC = () => {
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
-  const history = useHistory();
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const doSignUp = (event: React.MouseEvent) => {
-    const { valid, error } = validation(username, password1, password2, email);
-    valid ? onSuccess(event) : setError(error);
-  };
-
-  const createUserWithEmailAndPasswordHandler = async (event: React.MouseEvent) => {
+  const doSignUp = async (event: React.MouseEvent) => {
     event.preventDefault();
+    const { valid, error: validationError } = validation(username, password1, password2, email);
+    
+    if (!valid) {
+      setError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
     try {
-      // Updated to Firebase v9 syntax
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password1
-      );
-      const user = userCredential.user;
-      await generateUserDocument(user, { username });
-    } catch (error) {
-      setError("Error Signing up with email and password");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password1);
+      await generateUserDocument(userCredential.user, { username });
+      navigate("/page/Explore");
+    } catch (error: any) {
+      setError(error.message || "Error Signing up");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const onSuccess = (event: React.MouseEvent) => {
-    setError("Success");
-    createUserWithEmailAndPasswordHandler(event);
-    history.push("/page/Explore");
-    clear();
-  };
-
-  const clear = () => {
-    setTimeout(() => {
-      setEmail("");
-      setUsername("");
-      setPassword1("");
-      setPassword2("");
-      setError("");
-    }, 1000);
-  };
-
-  const messageColor = error === "Success" ? "green" : "red";
-
   return (
-    <IonList>
-      {error ? (
-        <IonItem style={{ color: messageColor }}>{error}</IonItem>
-      ) : null}
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          value={email}
-          placeholder="email"
-          onIonChange={(e) => setEmail(e.detail.value!)}
-          clearInput
-        />
-      </IonItem>
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          value={username}
-          placeholder="username"
-          onIonChange={(e) => setUsername(e.detail.value!)}
-          clearInput
-        />
-      </IonItem>
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          type="password"
-          placeholder="Password"
-          onIonChange={(e) => setPassword1(e.detail.value!)}
-          value={password1}
-        />
-      </IonItem>
-      <IonItem style={{ flex: 1 }}>
-        <IonInput
-          type="password"
-          placeholder="Confirm your password"
-          onIonChange={(e) => setPassword2(e.detail.value!)}
-          value={password2}
-        />
-      </IonItem>
-      <IonButton expand="full" onClick={doSignUp}>
-        Sign Up
+    <IonCard style={{ maxWidth: '450px', width: '90%', padding: '30px', borderRadius: '16px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h2 style={{ fontWeight: '800', fontSize: '1.75rem', margin: '0', color: 'var(--ion-color-primary)' }}>Create Account</h2>
+        <p style={{ color: 'var(--ion-color-step-600)', marginTop: '8px' }}>Join the community of researchers</p>
+      </div>
+
+      {error && (
+        <div style={{ 
+          background: 'var(--ion-color-danger-tint, #fee2e2)', 
+          color: 'var(--ion-color-danger, #b91c1c)', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          marginBottom: '20px',
+          fontSize: '0.9rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <IonList lines="none">
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '12px' }}>
+          <IonInput
+            value={username}
+            placeholder="Username"
+            onIonChange={(e) => setUsername(e.detail.value!)}
+          />
+        </IonItem>
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '12px' }}>
+          <IonInput
+            value={email}
+            type="email"
+            placeholder="Email Address"
+            onIonChange={(e) => setEmail(e.detail.value!)}
+          />
+        </IonItem>
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '12px' }}>
+          <IonInput
+            type="password"
+            placeholder="Password"
+            onIonChange={(e) => setPassword1(e.detail.value!)}
+          />
+        </IonItem>
+        <IonItem style={{ '--background': 'var(--ion-color-step-50)', borderRadius: '8px', marginBottom: '24px' }}>
+          <IonInput
+            type="password"
+            placeholder="Confirm Password"
+            onIonChange={(e) => setPassword2(e.detail.value!)}
+          />
+        </IonItem>
+      </IonList>
+
+      <IonButton expand="block" onClick={doSignUp} disabled={isLoading} style={{ marginBottom: '20px' }}>
+        {isLoading ? 'Creating Account...' : 'Sign Up'}
       </IonButton>
-      <IonItem routerLink="/page/SignIn">
-        Already have an account? <a href="#">Sign In</a>
-      </IonItem>
-    </IonList>
+
+      <div style={{ textAlign: 'center', fontSize: '0.9rem' }}>
+        <p style={{ color: 'var(--ion-color-step-600)' }}>
+          Already have an account? <a onClick={() => navigate("/page/SignIn")} style={{ color: 'var(--ion-color-primary)', fontWeight: '600', cursor: 'pointer' }}>Log In</a>
+        </p>
+      </div>
+    </IonCard>
   );
 };
 
