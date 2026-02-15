@@ -6,13 +6,11 @@ import {
   useIonToast,
   IonSpinner
 } from "@ionic/react";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   bookOutline, 
   closeOutline, 
   checkmarkOutline, 
-  refreshOutline, 
-  openOutline,
   star,
   starOutline
 } from "ionicons/icons";
@@ -29,13 +27,13 @@ const ReadPage = () => {
   const [activePaper, setActivePaper] = useState<any>(null);
   const [present] = useIonToast();
 
-  // Filter library for unread or highly relevant papers
+  // Filter library for unread papers
   useEffect(() => {
     if (library.length > 0 && stack.length === 0) {
       const unread = library
         .filter((b: any) => !b.inReadingList && (b.progress?.current || 0) < (b.progress?.total || 1))
-        .sort(() => Math.random() - 0.5) // Randomize for "Discovery" feel
-        .slice(0, 10);
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 15);
       setStack(unread);
     }
   }, [library, stack.length]);
@@ -43,16 +41,22 @@ const ReadPage = () => {
   const handleSwipe = (paper: any, direction: 'left' | 'right') => {
     if (direction === 'right') {
       update(paper.bid, { inReadingList: true });
-      present({ message: "Added to Reading List!", duration: 1500, color: "success", position: 'bottom' });
+      present({ message: "Added to Reading List!", duration: 1000, color: "success", position: 'bottom' });
     }
     setStack(prev => prev.filter(p => p.bid !== paper.bid));
   };
 
   const setRating = (paper: any, rating: number) => {
     update(paper.bid, { rating });
+    
+    // Update local stack state so the UI reflects the change immediately
+    setStack(prev => prev.map(p => 
+      p.bid === paper.bid ? { ...p, rating } : p
+    ));
+
     present({
-      message: `Rated ${rating} stars. This will improve your suggestions!`,
-      duration: 2000,
+      message: `Rated ${rating} stars.`,
+      duration: 1500,
       color: "primary"
     });
   };
@@ -78,33 +82,40 @@ const ReadPage = () => {
         </div>
 
         <div style={{ width: '100%', maxWidth: '380px', flex: 1, position: 'relative', perspective: '1000px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {stack.length > 0 ? (
-              stack.slice(-2).map((paper, index, arr) => {
+              stack.slice(-3).map((paper, index, arr) => {
                 if (!paper.title) return null;
+                const isTop = index === arr.length - 1;
                 return (
                   <ReadSwipeCard 
                     key={paper.bid} 
                     paper={paper} 
-                    isTop={index === arr.length - 1} 
+                    isTop={isTop}
+                    index={index}
+                    totalInStack={arr.length}
                     onSwipe={(dir) => handleSwipe(paper, dir)}
                     onRate={(r) => setRating(paper, r)}
                   />
                 );
               })
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{ textAlign: 'center', padding: '40px' }}
+              >
                 <IonIcon icon={checkmarkOutline} color="success" style={{ fontSize: '64px' }} />
                 <h3>Queue Empty!</h3>
-                <p>You've processed your randomized reading queue.</p>
-                <IonButton fill="outline" onClick={() => setStack([])}>Refresh Queue</IonButton>
-              </div>
+                <p>Check back later for more suggestions.</p>
+                <IonButton fill="outline" shape="round" onClick={() => setStack([])}>Refresh</IonButton>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
 
         {stack.length > 0 && (
-          <div style={{ display: 'flex', gap: '32px', marginTop: '24px', zIndex: 10 }}>
+          <div style={{ display: 'flex', gap: '32px', marginTop: '24px', zIndex: 10, paddingBottom: '20px' }}>
             <IonButton 
               fill="solid" 
               color="white"
@@ -138,7 +149,7 @@ const ReadPage = () => {
   );
 };
 
-const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: boolean, onSwipe: (dir: 'left' | 'right') => void, onRate: (r: number) => void }) => {
+const ReadSwipeCard = ({ paper, isTop, index, totalInStack, onSwipe, onRate }: { paper: any, isTop: boolean, index: number, totalInStack: number, onSwipe: (dir: 'left' | 'right') => void, onRate: (r: number) => void }) => {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
@@ -146,13 +157,16 @@ const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: b
   const addOpacity = useTransform(x, [50, 120], [0, 1]);
   const skipOpacity = useTransform(x, [-120, -50], [1, 0]);
 
+  const scale = isTop ? 1 : 1 - (totalInStack - 1 - index) * 0.05;
+  const yOffset = isTop ? 0 : (totalInStack - 1 - index) * 15;
+
   const handleDragEnd = (_: any, info: any) => {
-    const threshold = 120;
+    const threshold = 100;
     const velocity = info.velocity.x;
     
-    if (info.offset.x > threshold || velocity > 500) {
+    if (info.offset.x > threshold || velocity > 400) {
       onSwipe('right');
-    } else if (info.offset.x < -threshold || velocity < -500) {
+    } else if (info.offset.x < -threshold || velocity < -400) {
       onSwipe('left');
     }
   };
@@ -162,22 +176,24 @@ const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: b
       style={{ 
         position: 'absolute', width: '100%', height: '520px', x, rotate, opacity,
         cursor: isTop ? 'grab' : 'default',
-        zIndex: isTop ? 10 : 1,
-        transformOrigin: 'bottom center'
+        zIndex: isTop ? 10 : index,
+        transformOrigin: 'bottom center',
+        y: yOffset
       }}
       drag={isTop ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.9}
-      dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+      dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale, opacity: 1 }}
       exit={{ 
-        x: x.get() === 0 ? 0 : (x.get() > 0 ? 800 : -800), 
+        x: x.get() > 0 ? 800 : (x.get() < 0 ? -800 : (Math.random() > 0.5 ? 800 : -800)), 
         opacity: 0, 
         scale: 0.5,
-        transition: { duration: 0.4, ease: "easeIn" } 
+        rotate: x.get() > 0 ? 45 : -45,
+        transition: { duration: 0.4 } 
       }}
+      whileTap={isTop ? { scale: 1.02 } : {}}
     >
       <div style={{ 
         width: '100%', height: '100%', background: 'white', borderRadius: '28px',
@@ -187,7 +203,7 @@ const ReadSwipeCard = ({ paper, isTop, onSwipe, onRate }: { paper: any, isTop: b
         overflow: 'hidden',
         position: 'relative'
       }}>
-        <motion.div style={{ position: 'absolute', top: '40px', left: '20px', opacity: addOpacity, border: '4px solid var(--ion-color-primary)', color: 'var(--ion-color-primary)', padding: '4px 12px', borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '-15deg', zIndex: 20 }}>ADD</motion.div>
+        <motion.div style={{ position: 'absolute', top: '40px', left: '20px', opacity: addOpacity, border: '4px solid #00e676', color: '#00e676', padding: '4px 12px', borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '-15deg', zIndex: 20 }}>ADD</motion.div>
         <motion.div style={{ position: 'absolute', top: '40px', right: '20px', opacity: skipOpacity, border: '4px solid #ff4b2b', color: '#ff4b2b', padding: '4px 12px', borderRadius: '8px', fontSize: '2rem', fontWeight: '900', rotate: '15deg', zIndex: 20 }}>SKIP</motion.div>
 
         <div style={{ flex: 1, overflowY: 'auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
