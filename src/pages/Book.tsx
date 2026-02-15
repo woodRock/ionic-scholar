@@ -85,73 +85,61 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
   const { title, authors, year, url } = book;
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
-      <IonCard style={{ margin: '0 0 24px 0', padding: '10px' }}>
-        <IonCardHeader>
-          <IonCardSubtitle style={{ color: 'var(--ion-color-secondary)', fontSize: '1rem' }}>{year}</IonCardSubtitle>
-          <IonCardTitle style={{ fontSize: '2rem', fontWeight: '800', lineHeight: '1.2' }}>{title}</IonCardTitle>
-          <p style={{ fontSize: '1.1rem', color: 'var(--ion-color-step-600)', marginTop: '12px' }}>
-            {toList(authors)}
-          </p>
-        </IonCardHeader>
+    <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+      
+      {/* Header Section */}
+      <div style={{ marginBottom: '40px' }}>
+        <IonText color="medium" style={{ fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          {year}
+        </IonText>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', lineHeight: '1.2', margin: '8px 0 16px', color: 'var(--ion-color-dark)' }}>
+          {title}
+        </h1>
+        <p style={{ fontSize: '1.1rem', color: 'var(--ion-color-step-600)', lineHeight: '1.5', marginBottom: '12px' }}>
+          {toList(authors)}
+        </p>
         
-        <IonCardContent>
-          {book.description && (
-            <div style={{ marginBottom: '20px', borderTop: '1px solid var(--ion-border-color)', paddingTop: '20px' }}>
-              <IonText color="dark">
-                <h3 style={{ fontWeight: 'bold', marginBottom: '8px' }}>Abstract</h3>
-                <p style={{ lineHeight: '1.6', fontSize: '1.05rem', textAlign: 'justify' }}>{book.description}</p>
-              </IonText>
-            </div>
-          )}
+        {/* Cardless Keywords */}
+        <div style={{ marginBottom: '24px' }}>
+          <Keywords book={book} bid={bid} />
+        </div>
+
+        {/* Unified Action Bar */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           {url && (
-            <IonButton expand="block" fill="solid" href={url} target="_blank" style={{ marginTop: '10px' }}>
-              <IonLabel>Read Original Paper</IonLabel>
+            <IonButton fill="solid" shape="round" href={url} target="_blank">
+              Read Original Paper
             </IonButton>
           )}
-        </IonCardContent>
-      </IonCard>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <IonCard style={{ margin: 0 }}>
-            <IonCardHeader>
-              <IonCardTitle style={{ fontSize: '1.2rem' }}>Research Progress</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <Progress book={book} bid={bid} />
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard style={{ margin: 0 }}>
-            <IonCardHeader>
-              <IonCardTitle style={{ fontSize: '1.2rem' }}>Citation</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <Citations book={book} bid={bid} text="Generate BibTeX" />
-            </IonCardContent>
-          </IonCard>
+          <Citations book={book} bid={bid} text="Cite Paper" />
+          <Progress book={book} bid={bid} />
         </div>
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <IonCard style={{ margin: 0 }}>
-            <IonCardHeader>
-              <IonCardTitle style={{ fontSize: '1.2rem' }}>Keywords & Metadata</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <Keywords book={book} bid={bid} />
-            </IonCardContent>
-          </IonCard>
+      {/* Full Width Abstract Section */}
+      {book.description && (
+        <IonCard style={{ margin: '0 0 32px 0', boxShadow: 'none', border: '1px solid var(--ion-border-color)', borderRadius: '16px' }}>
+          <IonCardHeader>
+            <IonCardTitle style={{ fontSize: '1.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Abstract</IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            <p style={{ lineHeight: '1.8', fontSize: '1.1rem', color: 'var(--ion-color-step-800)', textAlign: 'justify' }}>
+              {book.description}
+            </p>
+          </IonCardContent>
+        </IonCard>
+      )}
 
-          <IonCard style={{ margin: 0 }}>
-            <IonCardHeader>
-              <IonCardTitle style={{ fontSize: '1.2rem' }}>Important Quotes</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <Quotes book={book} bid={bid} />
-            </IonCardContent>
-          </IonCard>
-        </div>
+      {/* Secondary Content Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+        <IonCard style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--ion-border-color)', borderRadius: '16px' }}>
+          <IonCardHeader>
+            <IonCardTitle style={{ fontSize: '1.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Quotes</IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            <Quotes book={book} bid={bid} />
+          </IonCardContent>
+        </IonCard>
       </div>
     </div>
   );

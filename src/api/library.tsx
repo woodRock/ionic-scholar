@@ -64,28 +64,45 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
     const enrichMissingUrls = async () => {
       processingRef.current = true;
-      const missing = library.filter(b => !b.url || b.url === "");
+      // Find papers missing URLs OR abstracts
+      const missing = library.filter(b => !b.url || b.url === "" || !b.description || b.description === "");
       
       if (missing.length === 0) {
         processingRef.current = false;
         return;
       }
 
-      console.log(`[Background] Found ${missing.length} papers missing URLs. Starting slow enrichment...`);
+      console.log(`[Background] Found ${missing.length} papers missing metadata (URL/Abstract). Starting enrichment...`);
 
       for (const book of missing) {
         // Slow down to avoid rate limits (1 paper every 5 seconds)
         await new Promise(resolve => setTimeout(resolve, 5000));
         
         try {
-          const foundUrl = await findPaperUrl(book.title);
-          if (foundUrl) {
-            console.log(`[Background] Linked: ${book.title}`);
-            collection(user.uid).doc(book.bid).set({ ...book, url: foundUrl });
+          // Use Semantic Scholar search to find the paper and its metadata
+          const response = await fetch(
+            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract`
+          );
+          
+          if (response.status === 429) throw new Error("RATE_LIMIT");
+          if (!response.ok) continue;
+
+          const result = await response.json();
+          if (result.data && result.data.length > 0) {
+            const paper = result.data[0];
+            const updates: any = {};
+            
+            if (!book.url && paper.url) updates.url = paper.url;
+            if (!book.description && paper.abstract) updates.description = paper.abstract;
+
+            if (Object.keys(updates).length > 0) {
+              console.log(`[Background] Enriched: ${book.title}`);
+              collection(user.uid).doc(book.bid).set({ ...book, ...updates }, { merge: true });
+            }
           }
         } catch (err: any) {
           if (err.message === "RATE_LIMIT") {
-            console.warn("[Background] Rate limited by Semantic Scholar. Pausing for 60s...");
+            console.warn("[Background] Rate limited. Pausing for 60s...");
             await new Promise(resolve => setTimeout(resolve, 60000));
           } else {
             console.error("[Background] Error enriching paper:", err);
