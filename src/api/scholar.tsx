@@ -1,5 +1,7 @@
 import { Book } from "./library";
 import { search as scholarlySearch } from "scholarly";
+import { doc, getDoc } from "firebase/firestore";
+import { firestore, auth } from "./firebase";
 
 /**
  * This class handles the Scholar API
@@ -67,10 +69,23 @@ export const cite = (book: Book): string => {
  */
 const semanticScholarSearch = async (query: string): Promise<Book[]> => {
   try {
+    const headers: Record<string, string> = {};
+    
+    if (auth.currentUser) {
+      try {
+        const settingsRef = doc(firestore, `users/${auth.currentUser.uid}/settings/preferences`);
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists() && settingsSnap.data().ssApiKey) {
+          headers["x-api-key"] = settingsSnap.data().ssApiKey;
+        }
+      } catch (e) { /* silent fail */ }
+    }
+
     const response = await fetch(
       `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(
         query
-      )}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue`
+      )}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue`,
+      { headers }
     );
     
     if (response.status === 429) {
@@ -91,6 +106,7 @@ const semanticScholarSearch = async (query: string): Promise<Book[]> => {
       publication: paper.venue
     }));
   } catch (error) {
+    if ((error as Error).message === "RATE_LIMIT") throw error;
     console.error("Semantic Scholar failed, falling back...", error);
     return [];
   }
