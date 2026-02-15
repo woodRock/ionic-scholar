@@ -23,6 +23,13 @@ import {
   DocumentSnapshot as FirestoreDocumentSnapshot
 } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL,
+  deleteObject
+} from "firebase/storage";
 
 /**
  * This is a utility class for the Firebase API
@@ -107,6 +114,7 @@ initialize();
 const app = getApp();
 const auth = getAuth(app);
 const firestore = getFirestore(app);
+const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
 const signInWithGoogle = async (): Promise<UserCredential | void> => {
@@ -222,6 +230,11 @@ export {
   initialize,
   auth,
   firestore,
+  storage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
   signInWithGoogle,
   generateUserDocument,
   getUserDocument,

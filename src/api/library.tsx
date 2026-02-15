@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import { collection, LibraryCollection, writeBatch, firestore } from "./firebase";
+import { collection, LibraryCollection, writeBatch, firestore, storage, ref, uploadBytes, getDownloadURL } from "./firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useUser } from "./user";
 import { findPaperUrl } from "./scholar";
@@ -63,28 +63,33 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     if (!user || library.length === 0 || processingRef.current) return;
 
     const enrichMissingUrls = async () => {
+      if (processingRef.current) return;
       processingRef.current = true;
-      // Find papers missing URLs OR abstracts
-      const missing = library.filter(b => !b.url || b.url === "" || !b.description || b.description === "");
+
+      // Find papers missing URLs OR abstracts, limit to a small batch per session
+      const missing = library.filter(b => !b.url || b.url === "" || !b.description || b.description === "").slice(0, 10);
       
       if (missing.length === 0) {
         processingRef.current = false;
         return;
       }
 
-      console.log(`[Background] Found ${missing.length} papers missing metadata (URL/Abstract). Starting enrichment...`);
+      console.log(`[Background] Attempting to enrich batch of ${missing.length} papers...`);
 
       for (const book of missing) {
-        // Slow down to avoid rate limits (1 paper every 5 seconds)
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Significantly slower to respect free tier limits (1 paper every 10 seconds)
+        await new Promise(resolve => setTimeout(resolve, 10000));
         
         try {
-          // Use Semantic Scholar search to find the paper and its metadata
           const response = await fetch(
             `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract,citationCount`
           );
           
-          if (response.status === 429) throw new Error("RATE_LIMIT");
+          if (response.status === 429) {
+            console.warn("[Background] Rate limited by Semantic Scholar. Stopping batch.");
+            break; 
+          }
+          
           if (!response.ok) continue;
 
           const result = await response.json();
@@ -98,16 +103,13 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             if (Object.keys(updates).length > 0) {
               console.log(`[Background] Enriched: ${book.title}`);
-              collection(user.uid).doc(book.bid).set({ ...book, ...updates }, { merge: true });
+              await collection(user.uid).doc(book.bid).set({ ...book, ...updates }, { merge: true });
             }
           }
         } catch (err: any) {
-          if (err.message === "RATE_LIMIT") {
-            console.warn("[Background] Rate limited. Pausing for 60s...");
-            await new Promise(resolve => setTimeout(resolve, 60000));
-          } else {
-            console.error("[Background] Error enriching paper:", err);
-          }
+          console.error("[Background] Error enriching paper (likely CORS or Network):", book.title);
+          // If we hit a network error/CORS, stop the batch to prevent spamming
+          break;
         }
       }
       processingRef.current = false;
@@ -224,6 +226,23 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       .catch(err => console.error("Error updating document: ", err));
   };
 
+  const uploadPDF = async (bid: string, file: File) => {
+    if (!user || !bid) return;
+    
+    try {
+      const storageRef = ref(storage, `users/${user.uid}/pdfs/${bid}.pdf`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      // Update the book document with the new PDF URL
+      update(bid, { pdf: downloadURL });
+      return downloadURL;
+    } catch (err) {
+      console.error("Error uploading PDF: ", err);
+      throw err;
+    }
+  };
+
   const clearReadingList = () => {
     if (!user) return;
     
@@ -268,7 +287,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   return (
-    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag, clearReadingList]}>
+    <LibraryContext.Provider value={[library, find, add, remove, clear, update, pinnedTags, togglePinnedTag, clearReadingList, uploadPDF]}>
       {children}
     </LibraryContext.Provider>
   );

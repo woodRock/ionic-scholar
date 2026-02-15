@@ -10,11 +10,13 @@ import {
   IonBadge,
 } from "@ionic/react";
 import { useParams } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { collection } from "../api/firebase";
 import {useUser} from "../api/user";
-import {Book} from "../api/library";
+import {Book, useLibrary} from "../api/library";
 import {toList} from "../api/scholar";
+import { cloudUploadOutline, documentTextOutline } from "ionicons/icons";
+import { IonIcon } from "@ionic/react";
 import Page from "../components/Page";
 import Citations from "../components/Citations";
 import Keywords from "../components/Keywords";
@@ -77,6 +79,10 @@ const BookPage: React.FC = () => {
  */
 const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
   const [readerOpen, setReaderOpen] = useState(false);
+  const [, , , , , , , , , uploadPDF] = useLibrary();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   if (!book || !bid) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -85,7 +91,24 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
     );
   }
 
-  const { title, authors, year, url } = book;
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !bid) return;
+
+    setIsUploading(true);
+    try {
+      await uploadPDF(bid, file);
+      console.log("PDF uploaded successfully");
+    } catch (error) {
+      console.error("Upload failed", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const { title, authors, year, url, pdf } = book;
+  const pdfUrl = pdf && pdf.startsWith('http') && pdf.includes('firebasestorage') ? pdf : url;
+  const hasPDF = pdf && pdf.startsWith('http') && pdf.includes('firebasestorage');
 
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
@@ -114,20 +137,40 @@ const BookItem: React.FC<BookItemProps> = ({ book, bid }) => {
 
         {/* Unified Action Bar */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {url && (
+          {(pdfUrl) && (
             <IonButton fill="solid" shape="round" onClick={() => setReaderOpen(true)}>
-              Read Paper
+              <IonIcon slot="start" icon={documentTextOutline} />
+              {hasPDF ? "Read PDF" : "View Source"}
             </IonButton>
           )}
+
+          <input
+            type="file"
+            accept="application/pdf"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileUpload}
+          />
+
+          <IonButton 
+            fill="outline" 
+            shape="round" 
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <IonIcon slot="start" icon={cloudUploadOutline} />
+            {isUploading ? "Uploading..." : (hasPDF ? "Replace PDF" : "Upload PDF")}
+          </IonButton>
+
           <Citations book={book} bid={bid} text="Cite Paper" />
           <Progress book={book} bid={bid} />
         </div>
 
-        {url && (
+        {pdfUrl && (
           <PDFReader 
             isOpen={readerOpen} 
             onClose={() => setReaderOpen(false)} 
-            url={url} 
+            url={pdfUrl} 
             book={book} 
             bid={bid} 
           />
