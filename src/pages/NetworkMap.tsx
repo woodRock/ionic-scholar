@@ -14,8 +14,9 @@ import {
   IonText,
   IonBadge
 } from '@ionic/react';
-import { shareSocialOutline, expandOutline, scanOutline, contractOutline } from 'ionicons/icons';
+import { shareSocialOutline, expandOutline, scanOutline, contractOutline, closeOutline } from 'ionicons/icons';
 import ForceGraph2D from 'react-force-graph-2d';
+import { motion } from 'framer-motion';
 import Page from '../components/Page';
 import { useLibrary } from '../api/library';
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +60,7 @@ const NetworkMapPage: React.FC = () => {
       };
     });
 
-    const nodeById: any = Object.fromEntries(nodes.map(n => [n.id, n]));
+    const nodeById: any = Object.fromEntries(nodes.map((n: any) => [n.id, n]));
     const links: any[] = [];
     
     for (let i = 0; i < nodes.length; i++) {
@@ -207,7 +208,7 @@ const NetworkMapPage: React.FC = () => {
                   <IonBadge color="primary" mode="ios">{selectedNode.year}</IonBadge>
                   <IonBadge color="secondary" mode="ios" style={{ marginLeft: '8px' }}>{selectedNode.citations} CITATIONS</IonBadge>
                 </div>
-                <IonButton fill="clear" color="light" size="small" onClick={() => { setSelectedNode(null); setHighlightNodes(new Set()); }} style={{ margin: -10 }}>
+                <IonButton fill="clear" color="light" size="small" onClick={() => { setSelectedNode(null); setHighlightNodes(new Set()); setHighlightLinks(new Set()); }} style={{ margin: -10 }}>
                   <IonIcon icon={closeOutline} />
                 </IonButton>
               </div>
@@ -249,7 +250,5 @@ const NetworkMapPage: React.FC = () => {
     </Page>
   );
 };
-
-import { closeOutline } from 'ionicons/icons';
 
 export default NetworkMapPage;
