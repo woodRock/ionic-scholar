@@ -4,6 +4,7 @@
 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"
+  SECRETS_SCAN_OMIT_PATHS = "dist/*"
 
 [[redirects]]
   from = "/*"
