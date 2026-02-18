@@ -30,14 +30,23 @@ const TaggingWizard: React.FC = () => {
   const [library, , , , , update] = useLibrary();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [customTag, setCustomTag] = useState("");
+  const [sessionBids, setSessionBids] = useState<string[] | null>(null);
 
-  // Filter library for papers that have no tags
-  const untaggedPapers = useMemo(() => {
-    return library.filter((b: any) => !b.keywords || b.keywords.length === 0);
-  }, [library]);
+  // Initialize sessionBids once when library is available
+  React.useEffect(() => {
+    if (library.length > 0 && sessionBids === null) {
+      const untagged = library.filter((b: any) => !b.keywords || b.keywords.length === 0);
+      setSessionBids(untagged.map((b: any) => b.bid));
+    }
+  }, [library, sessionBids]);
 
-  const currentBook = untaggedPapers[currentIndex];
-  const progress = untaggedPapers.length > 0 ? (currentIndex + 1) / untaggedPapers.length : 0;
+  const currentBook = useMemo(() => {
+    if (!sessionBids || currentIndex >= sessionBids.length) return null;
+    const bid = sessionBids[currentIndex];
+    return library.find((b: any) => b.bid === bid);
+  }, [library, sessionBids, currentIndex]);
+
+  const progress = (sessionBids && sessionBids.length > 0) ? (currentIndex + 1) / sessionBids.length : 0;
 
   // ... (dictionary remains the same)
   const dictionary = [
@@ -85,7 +94,7 @@ const TaggingWizard: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentIndex < untaggedPapers.length - 1) {
+    if (sessionBids && currentIndex < sessionBids.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -106,7 +115,7 @@ const TaggingWizard: React.FC = () => {
     );
   }
 
-  if (untaggedPapers.length === 0) {
+  if (sessionBids !== null && sessionBids.length === 0) {
     return (
       <Page name="Tagging Wizard">
         <div style={{ padding: '80px 20px', textAlign: 'center' }}>
@@ -121,6 +130,17 @@ const TaggingWizard: React.FC = () => {
     );
   }
 
+  if (!currentBook || !sessionBids) {
+    return (
+      <Page name="Tagging Wizard">
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <IonProgressBar type="indeterminate" />
+          <IonText color="medium">Loading papers...</IonText>
+        </div>
+      </Page>
+    );
+  }
+
   return (
     <Page name="Tagging Wizard">
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
@@ -129,7 +149,7 @@ const TaggingWizard: React.FC = () => {
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <IonLabel color="primary" style={{ fontWeight: 'bold' }}>
-              Paper {currentIndex + 1} of {untaggedPapers.length}
+              Paper {currentIndex + 1} of {sessionBids.length}
             </IonLabel>
             <IonLabel color="medium">{Math.round(progress * 100)}% Complete</IonLabel>
           </div>
@@ -207,7 +227,7 @@ const TaggingWizard: React.FC = () => {
                 <IonIcon slot="start" icon={chevronBackOutline} />
                 Previous
               </IonButton>
-              <IonButton fill="solid" onClick={handleNext} disabled={currentIndex === untaggedPapers.length - 1}>
+              <IonButton fill="solid" onClick={handleNext} disabled={!sessionBids || currentIndex === sessionBids.length - 1}>
                 Save & Next
                 <IonIcon slot="end" icon={chevronForwardOutline} />
               </IonButton>
