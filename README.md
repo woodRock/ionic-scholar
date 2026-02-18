@@ -26,6 +26,7 @@ This **individually** developed app keeps track of academic references. The app 
 @online { ionic,
   author = {Jesse Wood},
   title = {Ionic Scholar},
+  journal = {GitHub},
   year = {2020},
   url = {https://github.com/woodRock/ionic-scholar}
 }
@@ -38,7 +39,7 @@ This **individually** developed app keeps track of academic references. The app 
 To run this application we use the node package manager. Simply clone the repository. Make sure you are in the root of the directory. Then run the following command.
 
 ```bash
-$npm install
+npm install
 ```
 
 ### Troubleshooting
