@@ -138,7 +138,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             if (Object.keys(updates).length > 0) {
               console.log(`[Background] Enriched: ${book.title} (Fields: ${Object.keys(updates).join(", ")})`);
-              await collection(user.uid).doc(book.bid).set({ ...book, ...updates }, { merge: true });
+              await collection(user.uid).doc(book.bid).set(serialize({ ...book, ...updates }), { merge: true });
             }
           }
         } catch (err: any) {
@@ -157,7 +157,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     if (!user) return;
     
     // Ensure essential fields exist for Firebase and normalize tags
-    const cleanBook = {
+    const cleanBook = serialize({
       ...book,
       pdf: book.pdf || "https://ithemes.com/wp-content/uploads/2016/10/Funny-404-Pages-GitHub.png",
       authors: book.authors || ["Unknown Author"],
@@ -165,7 +165,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       numCitations: book.numCitations || 0,
       description: book.description || "",
       keywords: (book.keywords || []).map((k: string) => k.toLowerCase())
-    };
+    });
 
     // Deterministic ID to prevent duplicates: sanitized title (up to 100 chars) + year
     const docId = `${urlFriendly(cleanBook.title).substring(0, 100)}_${cleanBook.year}`;
@@ -257,7 +257,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       normalizedData.keywords = normalizedData.keywords.map((k: string) => k.toLowerCase());
     }
 
-    collection(user.uid).doc(bid).set(normalizedData, { merge: true })
+    collection(user.uid).doc(bid).set(serialize(normalizedData), { merge: true })
       .catch(err => console.error("Error updating document: ", err));
   };
 
@@ -355,7 +355,17 @@ export type Book = {
 };
 
 const serialize = (object: any): any => {
-  return JSON.parse(JSON.stringify(object));
+  const result: any = {};
+  Object.keys(object).forEach(key => {
+    if (object[key] !== undefined) {
+      if (object[key] !== null && typeof object[key] === 'object' && !Array.isArray(object[key])) {
+        result[key] = serialize(object[key]);
+      } else {
+        result[key] = object[key];
+      }
+    }
+  });
+  return result;
 };
 
 const urlFriendly = (id: string) => {
