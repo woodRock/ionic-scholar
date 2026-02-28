@@ -103,6 +103,10 @@ export const parseBibTeX = (bibtex: string): { books: Book[], totalFound: number
     const url = extractField(['url', 'howpublished', 'doi']);
     const journal = extractField(['journal', 'booktitle', 'series', 'publisher', 'institution']);
     const abstract = extractField(['abstract', 'description', 'note']);
+    const volume = extractField(['volume']);
+    const number = extractField(['number', 'issue']);
+    const pages = extractField(['pages']);
+    const doiField = extractField(['doi']);
 
     if (title || authorStr) {
       books.push({
@@ -111,7 +115,12 @@ export const parseBibTeX = (bibtex: string): { books: Book[], totalFound: number
         authors: authorStr ? authorStr.split(/\s+and\s+/i).map(a => a.trim()) : ["Unknown Author"],
         url: url.includes('http') ? url : (url ? `https://doi.org/${url}` : ""),
         publication: journal,
-        description: abstract
+        journal: journal,
+        description: abstract,
+        volume: volume,
+        number: number,
+        pages: pages,
+        doi: doiField || (url.includes('doi.org') ? url.split('doi.org/').pop() : "")
       });
     }
   }

@@ -278,7 +278,18 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
 const LibraryContext = createContext<any[]>([]);
 
-const useLibrary = () => useContext(LibraryContext);
+const useLibrary = () => {
+  const context = useContext(LibraryContext);
+  const [library] = context;
+  
+  const projects = Array.from(new Set(
+    library
+      .map((book: any) => book.project)
+      .filter((p: string | undefined) => p && p.trim() !== "")
+  )).sort() as string[];
+
+  return [...context, projects];
+};
 
 /**
  * This is a refactoring of IArticle name for simplification.
@@ -295,10 +306,16 @@ export type Book = {
   relatedUrl?: string;
   urlVersionsList?: string;
   publication?: string;
+  journal?: string;
+  volume?: string;
+  number?: string;
+  pages?: string;
+  doi?: string;
   keywords?: string[];
   notes?: string;
   rating?: number;
   inReadingList?: boolean;
+  project?: string;
 };
 
 const serialize = (object: any): any => {

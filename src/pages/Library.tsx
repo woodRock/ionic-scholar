@@ -41,7 +41,7 @@ const LibraryPage = () => {
  * The library is reloaded to reflect those changes.
  */
 const Library = () => {
-  const [library, , , , clear, , pinnedTags, togglePinned, clearReadingList] = useLibrary();
+  const [library, , , , clear, , pinnedTags, togglePinned, clearReadingList, projects] = useLibrary();
   const navigate = useNavigate();
   const [showAlert, setShowAlert] = useState(false);
   const [showClearListAlert, setShowClearListAlert] = useState(false);
@@ -49,6 +49,7 @@ const Library = () => {
   // Search and Filter State
   const [searchText, setSearchText] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"year" | "title">("year");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllTags, setShowAllTags] = useState(false);
@@ -97,8 +98,9 @@ const Library = () => {
         );
 
       const matchesReadingList = !showReadingListOnly || book.inReadingList;
+      const matchesProject = !selectedProject || book.project === selectedProject;
 
-      return matchesSearch && matchesTags && matchesReadingList;
+      return matchesSearch && matchesTags && matchesReadingList && matchesProject;
     })
     .sort((a: any, b: any) => {
       let comparison = 0;
@@ -198,6 +200,35 @@ const Library = () => {
           </IonButton>
         </div>
 
+        {projects.length > 0 && (
+          <div style={{ marginTop: '16px' }}>
+            <IonLabel style={{ display: 'block', fontWeight: '600', fontSize: '0.7rem', color: 'var(--ion-color-step-500)', marginBottom: '8px', letterSpacing: '0.05em' }}>
+              PROJECTS:
+            </IonLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <IonChip 
+                color={selectedProject === null ? "primary" : "medium"}
+                outline={selectedProject !== null}
+                onClick={() => setSelectedProject(null)}
+                style={{ margin: 0, fontSize: '0.8rem' }}
+              >
+                <IonLabel>All Projects</IonLabel>
+              </IonChip>
+              {projects.map((project: string) => (
+                <IonChip 
+                  key={project}
+                  color={selectedProject === project ? "primary" : "medium"}
+                  outline={selectedProject !== project}
+                  onClick={() => setSelectedProject(project)}
+                  style={{ margin: 0, fontSize: '0.8rem' }}
+                >
+                  <IonLabel>{project}</IonLabel>
+                </IonChip>
+              ))}
+            </div>
+          </div>
+        )}
+
         {(pinned.length > 0 || others.length > 0) && (
           <div style={{ marginTop: '16px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -280,7 +311,7 @@ const Library = () => {
       {filteredLibrary.length === 0 && library.length > 0 && (
         <div style={{ textAlign: 'center', marginTop: '60px' }}>
           <p style={{ color: 'var(--ion-color-step-500)' }}>No matches found for your current search/filters.</p>
-          <IonButton fill="clear" onClick={() => { setSearchText(""); setSelectedTags([]); }}>Clear All Filters</IonButton>
+          <IonButton fill="clear" onClick={() => { setSearchText(""); setSelectedTags([]); setSelectedProject(null); }}>Clear All Filters</IonButton>
         </div>
       )}
 
@@ -317,8 +348,11 @@ const BookCard = (book: any) => {
         
         <IonCardContent style={{ flex: 1 }}>
           <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>{toList(authors)}</IonLabel>
-          <div style={{ marginTop: '8px' }}>
+          <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <IonBadge color="light" style={{ fontSize: '0.7rem' }}>{book.numCitations || 0} CITATIONS</IonBadge>
+            {book.project && (
+              <IonBadge color="secondary" style={{ fontSize: '0.7rem' }}>{book.project.toUpperCase()}</IonBadge>
+            )}
           </div>
         </IonCardContent>
 

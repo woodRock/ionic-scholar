@@ -27,7 +27,7 @@ export const toList = (authors: string[]): string => {
  * This method parses a book into a LaTeX style citation
  */
 export const cite = (book: Book): string => {
-  const { title, year, authors, url, publication, description } = book;
+  const { title, year, authors, url, publication, journal, volume, number, pages, doi, description } = book;
   
   // Create a robust citation label: FirstAuthorYearShortTitle
   const firstAuthor = authors[0]?.split(" ").pop()?.toLowerCase() || "scholar";
@@ -36,7 +36,7 @@ export const cite = (book: Book): string => {
 
   // Escape common LaTeX special characters
   const escapeLaTeX = (str: string = "") => 
-    str.replace(/&/g, "\\&")
+    String(str).replace(/&/g, "\\&")
        .replace(/%/g, "\\%")
        .replace(/\$/g, "\\$")
        .replace(/#/g, "\\#")
@@ -45,17 +45,23 @@ export const cite = (book: Book): string => {
        .replace(/\}/g, "\\}");
 
   const authorList = authors.map(a => a.trim()).join(" and ");
-  const entryType = publication ? "@article" : "@online";
+  const entryType = (publication || journal) ? "@article" : "@online";
   
   let bibtex = `${entryType}{${label},\n`;
   bibtex += `  author = {${escapeLaTeX(authorList)}},\n`;
   bibtex += `  title = {${escapeLaTeX(title)}},\n`;
   bibtex += `  year = {${year}},\n`;
   
-  if (publication) {
-    bibtex += `  journal = {${escapeLaTeX(publication)}},\n`;
+  const journalName = journal || publication;
+  if (journalName) {
+    bibtex += `  journal = {${escapeLaTeX(journalName)}},\n`;
   }
   
+  if (volume) bibtex += `  volume = {${volume}},\n`;
+  if (number) bibtex += `  number = {${number}},\n`;
+  if (pages) bibtex += `  pages = {${pages}},\n`;
+  if (doi) bibtex += `  doi = {${doi}},\n`;
+
   if (url) {
     bibtex += `  url = {${url}},\n`;
     bibtex += `  urldate = {${new Date().toISOString().split('T')[0]}},\n`;
@@ -88,7 +94,7 @@ const semanticScholarSearch = async (query: string, options: SearchOptions = {})
       } catch (e) { /* silent fail */ }
     }
 
-    let url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue`;
+    let url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue,publicationVenue,journal,externalIds`;
     
     if (options.year) {
       url += `&year=${encodeURIComponent(options.year)}`;
@@ -117,7 +123,11 @@ const semanticScholarSearch = async (query: string, options: SearchOptions = {})
       url: paper.url,
       numCitations: paper.citationCount || 0,
       description: paper.abstract,
-      publication: paper.venue
+      publication: paper.venue || paper.publicationVenue?.name || paper.journal?.name,
+      journal: paper.journal?.name || paper.publicationVenue?.name,
+      volume: paper.journal?.volume,
+      pages: paper.journal?.pages,
+      doi: paper.externalIds?.DOI
     }));
 
     if (options.minCitations) {
@@ -205,8 +215,8 @@ const scholar = async (query: string, options: SearchOptions = {}): Promise<Book
 
   // 3. Last resort: Original scraper (Note: frequently breaks due to Google changes)
   try {
-    const fallbackResults: Book[] = await scholarlySearch(query);
-    return fallbackResults || [];
+    const fallbackResults: any = await scholarlySearch(query);
+    return (fallbackResults || []) as Book[];
   } catch (error) {
     console.error("All academic providers exhausted", error);
     return [];
