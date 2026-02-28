@@ -77,7 +77,8 @@ const BibTeXFixer: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpe
               doi: book.doi || match.doi,
               url: book.url || match.url,
               year: book.year || match.year,
-              description: book.description || match.description
+              description: book.description || match.description,
+              bibtexKey: book.bibtexKey // Maintain the original identifier
             };
             fixedBooks.push(fixedBook);
           } else {

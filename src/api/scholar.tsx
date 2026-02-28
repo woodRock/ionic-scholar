@@ -27,12 +27,15 @@ export const toList = (authors: string[]): string => {
  * This method parses a book into a LaTeX style citation
  */
 export const cite = (book: Book): string => {
-  const { title, year, authors, url, publication, journal, volume, number, pages, doi, description } = book;
+  const { title, year, authors, url, publication, journal, volume, number, pages, doi, description, bibtexKey } = book;
   
-  // Create a robust citation label: FirstAuthorYearShortTitle
-  const firstAuthor = authors[0]?.split(" ").pop()?.toLowerCase() || "scholar";
-  const shortTitle = title.split(" ").slice(0, 3).join("").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-  const label = `${firstAuthor}${year}${shortTitle}`;
+  // Use existing key if available, otherwise generate one: FirstAuthorYearShortTitle
+  let label = bibtexKey;
+  if (!label) {
+    const firstAuthor = authors[0]?.split(" ").pop()?.toLowerCase() || "scholar";
+    const shortTitle = title.split(" ").slice(0, 3).join("").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    label = `${firstAuthor}${year}${shortTitle}`;
+  }
 
   // Escape common LaTeX special characters
   const escapeLaTeX = (str: string = "") => 
@@ -234,6 +237,67 @@ export const findPaperUrl = async (title: string): Promise<string | null> => {
     return match?.url || results[0]?.url || null;
   } catch (error) {
     return null;
+  }
+};
+
+/**
+ * Fetches paper recommendations based on a list of seed titles.
+ * Uses Semantic Scholar's recommendations API.
+ */
+export const getRecommendations = async (seedTitles: string[]): Promise<Book[]> => {
+  try {
+    const headers: Record<string, string> = {};
+    if (auth.currentUser) {
+      try {
+        const settingsRef = doc(firestore, `users/${auth.currentUser.uid}/settings/preferences`);
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists() && settingsSnap.data().ssApiKey) {
+          headers["x-api-key"] = settingsSnap.data().ssApiKey;
+        }
+      } catch (e) { /* silent fail */ }
+    }
+
+    // 1. Get Semantic Scholar IDs for the seed titles
+    const paperIds: string[] = [];
+    for (const title of seedTitles.slice(0, 3)) { // Limit to 3 seeds to avoid rate limits
+      const searchUrl = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(title)}&limit=1&fields=paperId`;
+      const searchRes = await fetch(searchUrl, { headers });
+      if (searchRes.ok) {
+        const data = await searchRes.json();
+        if (data.data && data.data.length > 0) {
+          paperIds.push(data.data[0].paperId);
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 500)); // Respect rate limits
+    }
+
+    if (paperIds.length === 0) return [];
+
+    // 2. Fetch recommendations for the first valid ID
+    // Semantic scholar allows positive/negative IDs but standard endpoint is /paper/{id}/recommendations
+    const recUrl = `https://api.semanticscholar.org/graph/v1/paper/${paperIds[0]}/recommendations?limit=10&fields=title,authors,year,url,citationCount,abstract,venue,publicationVenue,journal,externalIds`;
+    
+    const response = await fetch(recUrl, { headers });
+    if (!response.ok) throw new Error("Recommendations request failed");
+    
+    const data = await response.json();
+    
+    return (data.recommendedPapers || []).map((paper: any) => ({
+      title: paper.title,
+      year: paper.year || new Date().getFullYear(),
+      authors: paper.authors?.map((a: any) => a.name) || ["Unknown Author"],
+      url: paper.url,
+      numCitations: paper.citationCount || 0,
+      description: paper.abstract,
+      publication: paper.venue || paper.publicationVenue?.name || paper.journal?.name,
+      journal: paper.journal?.name || paper.publicationVenue?.name,
+      volume: paper.journal?.volume,
+      pages: paper.journal?.pages,
+      doi: paper.externalIds?.DOI
+    }));
+  } catch (error) {
+    console.error("Failed to get recommendations", error);
+    return [];
   }
 };
 

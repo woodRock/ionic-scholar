@@ -11,16 +11,20 @@ import {
   IonSearchbar,
   IonChip,
   IonBadge,
+  IonCheckbox,
+  useIonToast,
 } from "@ionic/react";
 import React, { useState, useMemo } from "react";
-import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp, star, bookOutline, closeOutline } from "ionicons/icons";
+import { libraryOutline, trashOutline, alertCircleOutline, arrowUp, arrowDown, pricetagOutline, chevronDown, chevronUp, star, bookOutline, closeOutline, checkmarkCircleOutline, listOutline, sparklesOutline, copyOutline } from "ionicons/icons";
 import { v4 } from "uuid";
 import { useNavigate, Link } from "react-router-dom";
 import Page from "../components/Page";
 import { useLibrary } from "../api/library";
-import { toList } from "../api/scholar";
+import { toList, getRecommendations } from "../api/scholar";
 import BibTeXActions from "../components/BibTeXActions";
 import PDFReader from "../components/PDFReader";
+import RecommendationsModal from "../components/RecommendationsModal";
+import DuplicateFinder from "../components/DuplicateFinder";
 
 /**
  * The library is a collection of citations the user has bookmarked.
@@ -41,8 +45,9 @@ const LibraryPage = () => {
  * The library is reloaded to reflect those changes.
  */
 const Library = () => {
-  const [library, , , , clear, , pinnedTags, togglePinned, clearReadingList, projects] = useLibrary();
+  const [library, , , remove, clear, update, pinnedTags, togglePinned, clearReadingList, projects] = useLibrary();
   const navigate = useNavigate();
+  const [present] = useIonToast();
   const [showAlert, setShowAlert] = useState(false);
   const [showClearListAlert, setShowClearListAlert] = useState(false);
   
@@ -54,6 +59,14 @@ const Library = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllTags, setShowAllTags] = useState(false);
   const [showReadingListOnly, setShowReadingListOnly] = useState(false);
+
+  // Bulk Action State
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedBids, setSelectedBids] = useState<Set<string>>(new Set());
+  const [showBulkProjectAlert, setShowBulkProjectAlert] = useState(false);
+  const [showBulkDeleteAlert, setShowBulkDeleteAlert] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [showDuplicateFinder, setShowDuplicateFinder] = useState(false);
 
   // Group tags into Pinned vs Others, both sorted alphabetically
   const { pinned, others } = useMemo(() => {
@@ -78,6 +91,33 @@ const Library = () => {
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
+  };
+
+  const toggleSelection = (bid: string) => {
+    const next = new Set(selectedBids);
+    if (next.has(bid)) next.delete(bid);
+    else next.add(bid);
+    setSelectedBids(next);
+  };
+
+  const handleBulkDelete = () => {
+    selectedBids.forEach(bid => {
+      const book = library.find((b: any) => b.bid === bid);
+      if (book) remove(book.title);
+    });
+    present({ message: `Deleted ${selectedBids.size} items`, duration: 2000, color: 'success' });
+    setIsSelectionMode(false);
+    setSelectedBids(new Set());
+  };
+
+  const handleBulkProject = (projectName: string) => {
+    if (!projectName.trim()) return;
+    selectedBids.forEach(bid => {
+      update(bid, { project: projectName.trim() });
+    });
+    present({ message: `Assigned ${selectedBids.size} items to ${projectName}`, duration: 2000, color: 'success' });
+    setIsSelectionMode(false);
+    setSelectedBids(new Set());
   };
 
   // Filter and Sort Logic
@@ -128,10 +168,10 @@ const Library = () => {
   );
 
   return (
-    <div style={{ padding: '16px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '16px', maxWidth: '1200px', margin: '0 auto', paddingBottom: isSelectionMode ? '80px' : '16px' }}>
       {/* ... existing header code ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <BibTeXActions />
           {library.length > 0 && (
             <IonButton fill="outline" size="small" color="secondary" onClick={() => navigate("/page/TaggingWizard")}>
@@ -154,8 +194,33 @@ const Library = () => {
               Clear List
             </IonButton>
           )}
+          
+          <div style={{ width: '1px', height: '24px', background: 'var(--ion-border-color)', margin: '0 4px' }} />
+          
+          <IonButton 
+            fill={isSelectionMode ? "solid" : "outline"} 
+            size="small" 
+            color={isSelectionMode ? "primary" : "medium"} 
+            onClick={() => {
+              setIsSelectionMode(!isSelectionMode);
+              if (isSelectionMode) setSelectedBids(new Set());
+            }}
+          >
+            <IonIcon slot="start" icon={listOutline} />
+            {isSelectionMode ? "Cancel Selection" : "Bulk Edit"}
+          </IonButton>
+
+          <IonButton 
+            fill="outline" 
+            size="small" 
+            color="medium" 
+            onClick={() => setShowDuplicateFinder(true)}
+            title="Find Duplicates"
+          >
+            <IonIcon slot="icon-only" icon={copyOutline} />
+          </IonButton>
         </div>
-        {library.length > 0 && (
+        {library.length > 0 && !isSelectionMode && (
           <IonButton 
             color="danger" 
             fill="outline" 
@@ -287,24 +352,44 @@ const Library = () => {
         header="Clear Library?"
         message="This will permanently delete all saved papers and their associated notes. This action cannot be undone."
         buttons={[
-          {
-            text: 'Cancel',
-            role: 'cancel',
-            cssClass: 'secondary',
-          },
-          {
-            text: 'Delete All',
-            role: 'destructive',
-            handler: () => {
-              clear();
-            },
-          },
+          { text: 'Cancel', role: 'cancel', cssClass: 'secondary' },
+          { text: 'Delete All', role: 'destructive', handler: () => clear() },
+        ]}
+      />
+
+      <IonAlert
+        isOpen={showBulkDeleteAlert}
+        onDidDismiss={() => setShowBulkDeleteAlert(false)}
+        header="Delete Selected?"
+        message={`Are you sure you want to delete ${selectedBids.size} selected items?`}
+        buttons={[
+          { text: 'Cancel', role: 'cancel' },
+          { text: 'Delete', role: 'destructive', handler: handleBulkDelete }
+        ]}
+      />
+
+      <IonAlert
+        isOpen={showBulkProjectAlert}
+        onDidDismiss={() => setShowBulkProjectAlert(false)}
+        header="Assign to Project"
+        inputs={[
+          { name: 'projectName', type: 'text', placeholder: 'Project Name' }
+        ]}
+        buttons={[
+          { text: 'Cancel', role: 'cancel' },
+          { text: 'Assign', handler: (data) => handleBulkProject(data.projectName) }
         ]}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
         {filteredLibrary.map((book: any) => (
-          <BookCard key={book.uid || v4()} {...book} />
+          <BookCard 
+            key={book.uid || book.bid || v4()} 
+            {...book} 
+            isSelectionMode={isSelectionMode}
+            isSelected={selectedBids.has(book.bid)}
+            onToggleSelect={() => toggleSelection(book.bid)}
+          />
         ))}
       </div>
       
@@ -322,26 +407,117 @@ const Library = () => {
           <p>Search for papers in Explore to add them here.</p>
         </div>
       )}
+
+      {/* Bulk Actions Footer */}
+      {isSelectionMode && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'var(--ion-color-step-850, #222)',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '32px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          display: 'flex',
+          gap: '16px',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <span style={{ fontWeight: '600', fontSize: '0.9rem', marginRight: '8px' }}>
+            {selectedBids.size} Selected
+          </span>
+          <IonButton 
+            size="small" 
+            color="light" 
+            fill="clear" 
+            disabled={selectedBids.size === 0}
+            onClick={() => setShowBulkProjectAlert(true)}
+          >
+            <IonIcon slot="start" icon={pricetagOutline} />
+            Project
+          </IonButton>
+          <IonButton 
+            size="small" 
+            color="light" 
+            fill="clear" 
+            disabled={selectedBids.size === 0}
+            onClick={() => setShowRecommendations(true)}
+          >
+            <IonIcon slot="start" icon={sparklesOutline} />
+            Recommend
+          </IonButton>
+          <div style={{ width: '1px', height: '20px', background: '#555' }} />
+          <IonButton 
+            size="small" 
+            color="danger" 
+            fill="clear"
+            disabled={selectedBids.size === 0}
+            onClick={() => setShowBulkDeleteAlert(true)}
+          >
+            <IonIcon slot="start" icon={trashOutline} />
+            Delete
+          </IonButton>
+        </div>
+      )}
+
+      <RecommendationsModal 
+        isOpen={showRecommendations} 
+        onClose={() => setShowRecommendations(false)}
+        selectedTitles={Array.from(selectedBids).map(bid => library.find((b: any) => b.bid === bid)?.title).filter(Boolean) as string[]}
+      />
+
+      <DuplicateFinder 
+        isOpen={showDuplicateFinder} 
+        onClose={() => setShowDuplicateFinder(false)} 
+      />
     </div>
   );
 };
 
-const BookCard = (book: any) => {
+const BookCard = (props: any) => {
+  const { title, authors, year, url, inReadingList, isSelectionMode, isSelected, onToggleSelect } = props;
   const navigate = useNavigate();
   const [, , , remove, , update] = useLibrary();
   const [readerOpen, setReaderOpen] = useState(false);
-  const { title, authors, year, url, inReadingList } = book;
   
+  const handleClick = (e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      e.preventDefault();
+      onToggleSelect();
+    } else {
+      navigate("/page/Book/" + encodeURIComponent(title));
+    }
+  };
+
   return (
     <>
       <IonCard 
-        onClick={() => navigate("/page/Book/" + encodeURIComponent(title))}
-        style={{ margin: 0, cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
+        onClick={handleClick}
+        style={{ 
+          margin: 0, 
+          cursor: 'pointer', 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          border: isSelected ? '2px solid var(--ion-color-primary)' : '2px solid transparent',
+          transition: 'all 0.2s ease'
+        }}
       >
         <IonCardHeader>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <IonCardSubtitle style={{ color: 'var(--ion-color-secondary)' }}>{year}</IonCardSubtitle>
-            {inReadingList && <IonBadge color="primary" style={{ fontSize: '0.6rem' }}>LIST</IonBadge>}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {inReadingList && <IonBadge color="primary" style={{ fontSize: '0.6rem' }}>LIST</IonBadge>}
+              {isSelectionMode && (
+                <IonCheckbox 
+                  checked={isSelected} 
+                  onIonChange={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+            </div>
           </div>
           <IonCardTitle style={{ fontSize: '1.1rem', fontWeight: '700', lineHeight: '1.2' }}>{title}</IonCardTitle>
         </IonCardHeader>
@@ -349,66 +525,68 @@ const BookCard = (book: any) => {
         <IonCardContent style={{ flex: 1 }}>
           <IonLabel color="medium" style={{ fontSize: '0.85rem' }}>{toList(authors)}</IonLabel>
           <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <IonBadge color="light" style={{ fontSize: '0.7rem' }}>{book.numCitations || 0} CITATIONS</IonBadge>
-            {book.project && (
-              <IonBadge color="secondary" style={{ fontSize: '0.7rem' }}>{book.project.toUpperCase()}</IonBadge>
+            <IonBadge color="light" style={{ fontSize: '0.7rem' }}>{props.numCitations || 0} CITATIONS</IonBadge>
+            {props.project && (
+              <IonBadge color="secondary" style={{ fontSize: '0.7rem' }}>{props.project.toUpperCase()}</IonBadge>
             )}
           </div>
         </IonCardContent>
 
-        <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ion-border-color, #eee)', alignItems: 'center' }}>
-          <div>
-            {url && (
+        {!isSelectionMode && (
+          <div style={{ padding: '8px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ion-border-color, #eee)', alignItems: 'center' }}>
+            <div>
+              {url && (
+                <IonButton 
+                  fill="clear" 
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReaderOpen(true);
+                  }}
+                >
+                  <IonIcon slot="start" icon={bookOutline} />
+                  Read
+                </IonButton>
+              )}
+            </div>
+            <div style={{ display: 'flex' }}>
+              {inReadingList && (
+                <IonButton 
+                  fill="clear" 
+                  color="medium" 
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    update(props.bid, { inReadingList: false });
+                  }}
+                  title="Remove from Reading List"
+                >
+                  <IonIcon slot="icon-only" icon={closeOutline} />
+                </IonButton>
+              )}
               <IonButton 
                 fill="clear" 
+                color="danger" 
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setReaderOpen(true);
+                  remove(title);
                 }}
               >
-                <IonIcon slot="start" icon={bookOutline} />
-                Read
+                <IonIcon slot="icon-only" icon={trashOutline} />
               </IonButton>
-            )}
+            </div>
           </div>
-          <div style={{ display: 'flex' }}>
-            {inReadingList && (
-              <IonButton 
-                fill="clear" 
-                color="medium" 
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  update(book.bid, { inReadingList: false });
-                }}
-                title="Remove from Reading List"
-              >
-                <IonIcon slot="icon-only" icon={closeOutline} />
-              </IonButton>
-            )}
-            <IonButton 
-              fill="clear" 
-              color="danger" 
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                remove(title);
-              }}
-            >
-              <IonIcon slot="icon-only" icon={trashOutline} />
-            </IonButton>
-          </div>
-        </div>
+        )}
       </IonCard>
 
-      {url && (
+      {url && !isSelectionMode && (
         <PDFReader 
           isOpen={readerOpen} 
           onClose={() => setReaderOpen(false)} 
           url={url} 
-          book={book} 
-          bid={book.bid} 
+          book={props} 
+          bid={props.bid} 
         />
       )}
     </>

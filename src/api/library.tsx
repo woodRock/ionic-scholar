@@ -311,6 +311,7 @@ export type Book = {
   number?: string;
   pages?: string;
   doi?: string;
+  bibtexKey?: string;
   keywords?: string[];
   notes?: string;
   rating?: number;

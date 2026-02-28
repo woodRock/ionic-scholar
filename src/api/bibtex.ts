@@ -120,6 +120,7 @@ export const parseBibTeX = (bibtex: string): { books: Book[], totalFound: number
         volume: volume,
         number: number,
         pages: pages,
+        bibtexKey: current.key,
         doi: doiField || (url.includes('doi.org') ? url.split('doi.org/').pop() : "")
       });
     }
