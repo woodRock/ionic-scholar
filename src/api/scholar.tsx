@@ -97,7 +97,7 @@ const semanticScholarSearch = async (query: string, options: SearchOptions = {})
       } catch (e) { /* silent fail */ }
     }
 
-    let url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue,publicationVenue,journal,externalIds`;
+    let url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,url,citationCount,abstract,venue,publicationVenue,journal,externalIds,s2FieldsOfStudy`;
     
     if (options.year) {
       url += `&year=${encodeURIComponent(options.year)}`;
@@ -130,7 +130,8 @@ const semanticScholarSearch = async (query: string, options: SearchOptions = {})
       journal: paper.journal?.name || paper.publicationVenue?.name,
       volume: paper.journal?.volume,
       pages: paper.journal?.pages,
-      doi: paper.externalIds?.DOI
+      doi: paper.externalIds?.DOI,
+      keywords: paper.s2FieldsOfStudy?.map((f: any) => f.category) || []
     }));
 
     if (options.minCitations) {

@@ -57,17 +57,29 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   /**
-   * Background process to enrich papers missing URLs
+   * Background process to enrich papers missing URLs or Tags
    */
   useEffect(() => {
     if (!user || library.length === 0 || processingRef.current) return;
 
-    const enrichMissingUrls = async () => {
+    const dictionary = [
+      "Machine Learning", "Deep Learning", "CNN", "RNN", "Transformer", "NLP", 
+      "Computer Vision", "Mass Spectrometry", "REIMS", "iKnife", "Fish", 
+      "Aquaculture", "Fraud", "Traceability", "Spectroscopy", "Metabolomics", 
+      "Lipidomics", "DNA Barcoding", "Microplastics", "Heavy Metals", "Classification",
+      "Regression", "Anomaly Detection", "Food Safety", "Sustainable", "Spectral"
+    ];
+
+    const enrichMissingData = async () => {
       if (processingRef.current) return;
       processingRef.current = true;
 
-      // Find papers missing URLs OR abstracts, limit to a small batch per session
-      const missing = library.filter(b => !b.url || b.url === "" || !b.description || b.description === "").slice(0, 10);
+      // Find papers missing URLs OR abstracts OR Keywords, limit to a small batch per session
+      const missing = library.filter(b => 
+        !b.url || b.url === "" || 
+        !b.description || b.description === "" ||
+        !b.keywords || b.keywords.length === 0
+      ).slice(0, 10);
       
       if (missing.length === 0) {
         processingRef.current = false;
@@ -82,7 +94,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         
         try {
           const response = await fetch(
-            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract,citationCount`
+            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract,citationCount,s2FieldsOfStudy`
           );
           
           if (response.status === 429) {
@@ -101,8 +113,31 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
             if (!book.description && paper.abstract) updates.description = paper.abstract;
             if (paper.citationCount !== undefined) updates.numCitations = paper.citationCount;
 
+            // Automated Tagging Logic
+            const existingKeywords = (book.keywords || []).map((k: string) => k.toLowerCase());
+            const newKeywords = new Set<string>(existingKeywords);
+
+            // 1. Add fields of study from Semantic Scholar
+            if (paper.s2FieldsOfStudy) {
+              paper.s2FieldsOfStudy.forEach((f: any) => {
+                if (f.category) newKeywords.add(f.category.toLowerCase());
+              });
+            }
+
+            // 2. Dictionary-based matching (from title and abstract)
+            const textToScan = ((book.title || "") + " " + (paper.abstract || book.description || "")).toLowerCase();
+            dictionary.forEach(term => {
+              if (textToScan.includes(term.toLowerCase())) {
+                newKeywords.add(term.toLowerCase());
+              }
+            });
+
+            if (newKeywords.size > existingKeywords.length) {
+              updates.keywords = Array.from(newKeywords);
+            }
+
             if (Object.keys(updates).length > 0) {
-              console.log(`[Background] Enriched: ${book.title}`);
+              console.log(`[Background] Enriched: ${book.title} (Fields: ${Object.keys(updates).join(", ")})`);
               await collection(user.uid).doc(book.bid).set({ ...book, ...updates }, { merge: true });
             }
           }
@@ -115,7 +150,7 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       processingRef.current = false;
     };
 
-    enrichMissingUrls();
+    enrichMissingData();
   }, [library.length, user]);
 
   const addToLibrary = (book: Book) => {
