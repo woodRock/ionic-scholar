@@ -104,7 +104,7 @@ const ChatPage: React.FC = () => {
       // 2. Generation Step with Memory
       const genAI = new GoogleGenerativeAI(personalKey);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-pro-preview",
         generationConfig: {
           temperature: 0.2,
         }
