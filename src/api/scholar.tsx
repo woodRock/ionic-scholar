@@ -302,4 +302,47 @@ export const getRecommendations = async (seedTitles: string[]): Promise<Book[]> 
   }
 };
 
+/**
+ * Fetches paper metadata directly using a DOI or Semantic Scholar ID.
+ */
+export const fetchMetadataByDoi = async (doi: string): Promise<Partial<Book> | null> => {
+  try {
+    const headers: Record<string, string> = {};
+    if (auth.currentUser) {
+      try {
+        const settingsRef = doc(firestore, `users/${auth.currentUser.uid}/settings/preferences`);
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists() && settingsSnap.data().ssApiKey) {
+          headers["x-api-key"] = settingsSnap.data().ssApiKey;
+        }
+      } catch (e) { /* silent fail */ }
+    }
+
+    const url = `https://api.semanticscholar.org/graph/v1/paper/DOI:${doi}?fields=title,authors,year,url,citationCount,abstract,venue,publicationVenue,journal,externalIds,s2FieldsOfStudy`;
+    const response = await fetch(url, { headers });
+    
+    if (response.status === 429) throw new Error("RATE_LIMIT");
+    if (!response.ok) return null;
+    
+    const paper = await response.json();
+    return {
+      title: paper.title,
+      year: paper.year,
+      authors: paper.authors?.map((a: any) => a.name) || [],
+      url: paper.url,
+      numCitations: paper.citationCount,
+      description: paper.abstract,
+      publication: paper.venue || paper.publicationVenue?.name || paper.journal?.name,
+      journal: paper.journal?.name || paper.publicationVenue?.name,
+      volume: paper.journal?.volume,
+      pages: paper.journal?.pages,
+      doi: paper.externalIds?.DOI,
+      keywords: paper.s2FieldsOfStudy?.map((f: any) => f.category) || []
+    };
+  } catch (error) {
+    if ((error as Error).message === "RATE_LIMIT") throw error;
+    return null;
+  }
+};
+
 export { scholar };

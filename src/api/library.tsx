@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from "r
 import { collection, LibraryCollection, writeBatch, firestore } from "./firebase";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useUser } from "./user";
-import { findPaperUrl } from "./scholar";
+import { findPaperUrl, fetchMetadataByDoi, scholar } from "./scholar";
 
 /**
  * This class is represents the user library as global variable.
@@ -74,11 +74,12 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (processingRef.current) return;
       processingRef.current = true;
 
-      // Find papers missing URLs OR abstracts OR Keywords, limit to a small batch per session
+      // Prioritize papers missing critical metadata (abstract, url, or tags)
       const missing = library.filter(b => 
         !b.url || b.url === "" || 
         !b.description || b.description === "" ||
-        !b.keywords || b.keywords.length === 0
+        !b.keywords || b.keywords.length === 0 ||
+        !b.doi || b.doi === ""
       ).slice(0, 10);
       
       if (missing.length === 0) {
@@ -89,43 +90,54 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       console.log(`[Background] Attempting to enrich batch of ${missing.length} papers...`);
 
       for (const book of missing) {
-        // Significantly slower to respect free tier limits (1 paper every 10 seconds)
+        // Respect API rate limits (1 request every 10s for free tier stability)
         await new Promise(resolve => setTimeout(resolve, 10000));
         
         try {
-          const response = await fetch(
-            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(book.title)}&limit=1&fields=url,abstract,citationCount,s2FieldsOfStudy`
-          );
-          
-          if (response.status === 429) {
-            console.warn("[Background] Rate limited by Semantic Scholar. Stopping batch.");
-            break; 
+          let paper: Partial<Book> | null = null;
+
+          // 1. Try DOI lookup if available
+          if (book.doi) {
+            paper = await fetchMetadataByDoi(book.doi);
+          }
+
+          // 2. Fallback to title search if DOI lookup failed or wasn't possible
+          if (!paper) {
+            const results = await scholar(book.title);
+            // Match title precisely to avoid noise
+            paper = results.find(r => 
+              r.title.toLowerCase().includes(book.title.toLowerCase()) || 
+              book.title.toLowerCase().includes(r.title.toLowerCase())
+            ) || results[0] || null;
           }
           
-          if (!response.ok) continue;
-
-          const result = await response.json();
-          if (result.data && result.data.length > 0) {
-            const paper = result.data[0];
+          if (paper) {
             const updates: any = {};
             
+            // Critical metadata enrichment
             if (!book.url && paper.url) updates.url = paper.url;
-            if (!book.description && paper.abstract) updates.description = paper.abstract;
-            if (paper.citationCount !== undefined) updates.numCitations = paper.citationCount;
+            if (!book.description && paper.description) updates.description = paper.description;
+            if (!book.doi && paper.doi) updates.doi = paper.doi;
+            if (paper.numCitations !== undefined) updates.numCitations = paper.numCitations;
+            
+            // Secondary metadata enrichment (if missing or unknown)
+            if ((!book.journal || book.journal === "Unknown") && paper.journal) updates.journal = paper.journal;
+            if ((!book.publication || book.publication === "Unknown") && paper.publication) updates.publication = paper.publication;
+            if (!book.volume && paper.volume) updates.volume = paper.volume;
+            if (!book.pages && paper.pages) updates.pages = paper.pages;
+            if (!book.year && paper.year) updates.year = paper.year;
 
             // Automated Tagging Logic
             const existingKeywords = (book.keywords || []).map((k: string) => k.toLowerCase());
             const newKeywords = new Set<string>(existingKeywords);
 
             // 1. Add fields of study from Semantic Scholar
-            if (paper.s2FieldsOfStudy) {
-              paper.s2FieldsOfStudy.forEach((f: any) => {
-                if (f.category) newKeywords.add(f.category.toLowerCase());
-              });
+            if (paper.keywords) {
+              paper.keywords.forEach((k: string) => newKeywords.add(k.toLowerCase()));
             }
 
             // 2. Dictionary-based matching (from title and abstract)
-            const textToScan = ((book.title || "") + " " + (paper.abstract || book.description || "")).toLowerCase();
+            const textToScan = ((book.title || "") + " " + (paper.description || book.description || "")).toLowerCase();
             dictionary.forEach(term => {
               if (textToScan.includes(term.toLowerCase())) {
                 newKeywords.add(term.toLowerCase());
@@ -140,10 +152,17 @@ const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
               console.log(`[Background] Enriched: ${book.title} (Fields: ${Object.keys(updates).join(", ")})`);
               await collection(user.uid).doc(book.bid).set(serialize({ ...book, ...updates }), { merge: true });
             }
+          } else {
+            // If no metadata found, mark as "skipped" by setting a small internal flag 
+            // to prevent repeated useless lookups in the same session
+            (book as any)._enrichSkipped = true;
           }
         } catch (err: any) {
-          console.error("[Background] Error enriching paper (likely CORS or Network):", book.title);
-          // If we hit a network error/CORS, stop the batch to prevent spamming
+          if (err.message === "RATE_LIMIT") {
+            console.warn("[Background] Rate limited. Stopping batch.");
+            break;
+          }
+          console.error("[Background] Error enriching paper:", book.title);
           break;
         }
       }
